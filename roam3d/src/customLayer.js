@@ -6,6 +6,22 @@
 import * as THREE from 'three';
 import { MercatorCoordinate } from 'maplibre-gl';
 import { buildCar, buildBike } from './vehicle.js';
+import { PropsManager } from './props.js';
+import { createSkyTexture } from './textures.js';
+
+export const PARIS_ANCHOR_LNG_LAT = [2.2945, 48.8584];
+export const PARIS_ANCHOR_MERC = MercatorCoordinate.fromLngLat(
+  { lng: PARIS_ANCHOR_LNG_LAT[0], lat: PARIS_ANCHOR_LNG_LAT[1] },
+  0
+);
+export const PARIS_METER_SCALE = PARIS_ANCHOR_MERC.meterInMercatorCoordinateUnits();
+
+export function lngLatToWorld(lng, lat) {
+  const merc = MercatorCoordinate.fromLngLat({ lng, lat }, 0);
+  const x = (merc.x - PARIS_ANCHOR_MERC.x) / PARIS_METER_SCALE;
+  const z = -(merc.y - PARIS_ANCHOR_MERC.y) / PARIS_METER_SCALE;
+  return { x, z };
+}
 
 export class VehicleLayer {
   constructor() {
@@ -17,10 +33,15 @@ export class VehicleLayer {
     this.camera = null;
     this.renderer = null;
     this.map = null;
+    this.propsManager = null;
+    this.skyMesh = null;
+    this.sun = null;
+    this.fill = null;
 
     // Current vehicle group (car or bike)
     this._vehicleGroup = null;
     this._vehicleType = 'car';
+    this._headlightsOn = true;
 
     // Current world position (Mercator)
     this._mercPos = null;
@@ -42,16 +63,48 @@ export class VehicleLayer {
     const ambient = new THREE.AmbientLight(0xffffff, 1.4);
     this.scene.add(ambient);
 
-    const sun = new THREE.DirectionalLight(0xfff5e6, 2.2);
-    sun.position.set(20, 60, 40);
-    this.scene.add(sun);
+    this.sun = new THREE.DirectionalLight(0xfff5e6, 2.2);
+    this.sun.position.set(20, 60, 40);
+    this.scene.add(this.sun);
+    this.scene.add(this.sun.target);
 
-    const fill = new THREE.DirectionalLight(0x90caf9, 0.9);
-    fill.position.set(-20, 30, -30);
-    this.scene.add(fill);
+    this.fill = new THREE.DirectionalLight(0x90caf9, 0.9);
+    this.fill.position.set(-20, 30, -30);
+    this.scene.add(this.fill);
+    this.scene.add(this.fill.target);
 
     // Add subtle fog to match MapLibre atmosphere
-    this.scene.fog = new THREE.Fog(0xdce5ef, 200, 1200);
+    this.scene.fog = new THREE.Fog(0xdce5ef, 200, 1500);
+
+    // ── Textured Sky Hemisphere Dome ──────────────────────────────────────────
+    try {
+      const skyImgData = createSkyTexture();
+      const skyCanvas = document.createElement('canvas');
+      skyCanvas.width = 512;
+      skyCanvas.height = 512;
+      skyCanvas.getContext('2d').putImageData(skyImgData, 0, 0);
+      const skyTex = new THREE.CanvasTexture(skyCanvas);
+      skyTex.colorSpace = THREE.SRGBColorSpace;
+      skyTex.wrapS = THREE.RepeatWrapping;
+      skyTex.wrapT = THREE.ClampToEdgeWrapping;
+
+      const skyGeo = new THREE.SphereGeometry(450, 32, 16);
+      const skyMat = new THREE.MeshBasicMaterial({
+        map: skyTex,
+        side: THREE.BackSide,
+        depthWrite: false,
+        depthTest: false,
+      });
+      this.skyMesh = new THREE.Mesh(skyGeo, skyMat);
+      this.skyMesh.renderOrder = -1;
+      this.skyMesh.position.y = 30;
+      this.scene.add(this.skyMesh);
+    } catch (e) {
+      console.warn('Sky texture init notice:', e);
+    }
+
+    // Initialize 3D City Props (Street Lights, Benches, Trees, Fire, Dividers)
+    this.propsManager = new PropsManager(this.scene);
 
     // Build initial vehicle mesh
     this._buildVehicle(this._vehicleType);
@@ -74,6 +127,26 @@ export class VehicleLayer {
     this._buildVehicle(type);
   }
 
+  setHeadlights(enabled) {
+    this._headlightsOn = enabled;
+    if (this._vehicleGroup?.userData?.setHeadlights) {
+      this._vehicleGroup.userData.setHeadlights(enabled);
+    }
+  }
+
+  updateProps(key, value, state) {
+    if (!this.propsManager) return;
+    if (key === 'streetLightsEnabled' || key === 'streetLightsCount') {
+      this.propsManager.updateStreetLights(state.streetLightsEnabled, state.streetLightsCount);
+    } else if (key === 'benchesEnabled' || key === 'benchesCount') {
+      this.propsManager.updateBenches(state.benchesEnabled, state.benchesCount);
+    } else if (key === 'treesEnabled' || key === 'treesCount') {
+      this.propsManager.updateTrees(state.treesEnabled, state.treesCount);
+    } else if (key === 'fireEnabled' || key === 'fireCount') {
+      this.propsManager.updateFire(state.fireEnabled, state.fireCount);
+    }
+  }
+
   _buildVehicle(type) {
     if (this._vehicleGroup && this.scene) {
       this.scene.remove(this._vehicleGroup);
@@ -86,6 +159,9 @@ export class VehicleLayer {
       });
     }
     this._vehicleGroup = type === 'car' ? buildCar() : buildBike();
+    if (this._vehicleGroup?.userData?.setHeadlights) {
+      this._vehicleGroup.userData.setHeadlights(this._headlightsOn);
+    }
     if (this.scene) this.scene.add(this._vehicleGroup);
   }
 
@@ -129,41 +205,56 @@ export class VehicleLayer {
 
     const merc = this._mercPos;
 
-    // Scale factor: 1 meter in Mercator units at this latitude
-    const meterScale = merc.meterInMercatorCoordinateUnits();
-
-    // Exact 1:1 real-world metric scale: 1 Three.js unit = 1 real-world meter
-    const vehicleScale = meterScale * 1.0;
-
     // 1. MapLibre view-projection matrix
     const projMatrix = new THREE.Matrix4().fromArray(matrixArr);
 
-    // 2. Translate to vehicle's geographic Mercator position
-    const translateM = new THREE.Matrix4().makeTranslation(
-      merc.x, merc.y, merc.z
+    // 2. Fixed world anchor translation in Mercator space
+    const anchorTranslate = new THREE.Matrix4().makeTranslation(
+      PARIS_ANCHOR_MERC.x,
+      PARIS_ANCHOR_MERC.y,
+      PARIS_ANCHOR_MERC.z
     );
 
     // 3. Tip up from Three.js horizontal ground (Y-up) to Mercator ground (Z-up)
     const rotX = new THREE.Matrix4().makeRotationX(Math.PI / 2);
 
-    // 4. Heading rotation around vehicle's local UP axis:
-    // Bearing is degrees clockwise from North.
-    const bearingRad = (this._bearing * Math.PI) / 180;
-    const rotY = new THREE.Matrix4().makeRotationY(bearingRad);
-
-    // 5. Metric scale
+    // 4. Metric scale
     const scaleM = new THREE.Matrix4().makeScale(
-      vehicleScale,
-      vehicleScale,
-      vehicleScale
+      PARIS_METER_SCALE,
+      PARIS_METER_SCALE,
+      PARIS_METER_SCALE
     );
 
-    // Final camera projectionMatrix = projection × translation × rotX × rotY × scale
+    // Final camera projectionMatrix is anchored to the FIXED world frame:
     this.camera.projectionMatrix = projMatrix
-      .multiply(translateM)
+      .multiply(anchorTranslate)
       .multiply(rotX)
-      .multiply(rotY)
       .multiply(scaleM);
+
+    // 5. Update vehicle transform in world space
+    const vx = (merc.x - PARIS_ANCHOR_MERC.x) / PARIS_METER_SCALE;
+    const vy = this._altOffset;
+    const vz = -(merc.y - PARIS_ANCHOR_MERC.y) / PARIS_METER_SCALE;
+
+    this._vehicleGroup.position.set(vx, vy, vz);
+    this._vehicleGroup.rotation.y = (this._bearing * Math.PI) / 180;
+
+    // 6. Update sky and environment lights to follow the vehicle
+    if (this.skyMesh) {
+      this.skyMesh.position.set(vx, vy + 50, vz);
+    }
+    if (this.sun && this.fill) {
+      this.sun.position.set(vx + 20, vy + 60, vz + 40);
+      this.sun.target.position.set(vx, vy, vz);
+      this.fill.position.set(vx - 20, vy + 30, vz - 30);
+      this.fill.target.position.set(vx, vy, vz);
+    }
+
+    // 7. Update active props around the vehicle
+    if (this.propsManager) {
+      this.propsManager.updateVehiclePosition(vx, vz);
+      this.propsManager.tick(performance.now() / 1000);
+    }
 
     gl.enable(gl.DEPTH_TEST);
     gl.depthFunc(gl.LEQUAL);

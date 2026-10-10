@@ -24,6 +24,15 @@ export class DrivingState {
     this.vehicleType = 'car';
     this.finished = false;
 
+    // Dynamics settings multipliers
+    this.accelerationMultiplier = 1.0;
+    this.steeringSensitivity = 0.5;
+
+    // Collision state
+    this.lastSafeCoord = [2.29348, 48.859039];
+    this.collisionCooldown = 0;
+    this.hasCollided = false;
+
     // User input state
     this._keys = {
       forward: false,
@@ -38,6 +47,17 @@ export class DrivingState {
 
     window.addEventListener('keydown', this._boundKeyDown);
     window.addEventListener('keyup', this._boundKeyUp);
+  }
+
+  handleCollision() {
+    if (this.collisionCooldown > 0) return false;
+    // Step back to last safe position
+    this.coord = [...this.lastSafeCoord];
+    // Rebound back with dampening
+    this.speedKmh = -this.speedKmh * 0.45;
+    this.collisionCooldown = 0.35; // cooldown seconds
+    this.hasCollided = true;
+    return true;
   }
 
   _onKeyDown(e) {
@@ -127,6 +147,12 @@ export class DrivingState {
         this.bearing = bearingAtDist(this.distKm);
         this.steeringAngle = 0;
       } else {
+        if (this.collisionCooldown > 0) {
+          this.collisionCooldown -= dt;
+        }
+
+        const effectiveAccel = spec.acceleration * (this.accelerationMultiplier || 1.0);
+
         // ── Free Roam WASD Kinematic Driving ────────────────────────────────
         // 1. Throttle & Braking / Reverse
         if (this._keys.forward) {
@@ -135,7 +161,7 @@ export class DrivingState {
             this.speedKmh = Math.min(this.speedKmh + spec.braking * dt * 10, 0);
           } else {
             // Forward acceleration
-            this.speedKmh = Math.min(this.speedKmh + spec.acceleration * dt * 8, maxSpeed);
+            this.speedKmh = Math.min(this.speedKmh + effectiveAccel * dt * 8, maxSpeed);
           }
         } else if (this._keys.back) {
           if (this.speedKmh > 1) {
@@ -143,7 +169,7 @@ export class DrivingState {
             this.speedKmh = Math.max(this.speedKmh - spec.braking * dt * 10, 0);
           } else {
             // Reverse acceleration
-            this.speedKmh = Math.max(this.speedKmh - spec.acceleration * dt * 4, maxReverse);
+            this.speedKmh = Math.max(this.speedKmh - effectiveAccel * dt * 4, maxReverse);
           }
         } else {
           // Rolling friction / drag deceleration
@@ -155,7 +181,7 @@ export class DrivingState {
         }
 
         // 2. Dynamic Speed-Sensitive Steering
-        const maxSteerDeg = 32;
+        const maxSteerDeg = 32 * (this.steeringSensitivity || 1.0);
         let targetSteer = 0;
         if (this._keys.left) targetSteer -= maxSteerDeg;
         if (this._keys.right) targetSteer += maxSteerDeg;

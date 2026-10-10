@@ -187,15 +187,178 @@
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
           <span>Voice</span>
         </button>
+        <button id="btn-headlights" class="active" title="Toggle Headlights (H)">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          <span>Lights</span>
+        </button>
         <button id="btn-challenge" title="10-min Challenge">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
           <span>Challenge</span>
+        </button>
+        <button id="btn-settings" title="Settings (O)">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          <span>Settings</span>
         </button>
       </div>
 
       <div id="challenge-timer" style="display:none">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
         <span id="challenge-time">10:00</span>
+      </div>
+    </div>
+
+    <!-- ─── Building Collision Impact Effect ────────── -->
+    <div id="collision-overlay">
+      <div class="collision-banner">
+        <span class="collision-icon">💥</span>
+        <span class="collision-text">BUILDING IMPACT</span>
+      </div>
+    </div>
+
+    <!-- ─── Settings Modal ──────────────────────────── -->
+    <div id="settings-modal" style="display:none">
+      <div class="settings-backdrop"></div>
+      <div class="settings-container">
+        <div class="settings-header">
+          <div class="settings-title-wrap">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            <h2>Simulation Settings</h2>
+          </div>
+          <button id="btn-settings-close" class="settings-close-btn" aria-label="Close">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+
+        <div class="settings-body">
+          <!-- Road Features & Props Section -->
+          <div class="settings-section">
+            <div class="section-title">Road Features & Street Props</div>
+
+            <!-- Street Lights -->
+            <div class="setting-row">
+              <div class="setting-label">
+                <span class="setting-name">Street Lights</span>
+                <span class="setting-desc">Parisian cast-iron ornate lampposts with warm lanterns</span>
+              </div>
+              <label class="switch">
+                <input type="checkbox" id="setting-lights-toggle" checked>
+                <span class="slider round"></span>
+              </label>
+            </div>
+            <div class="setting-slider-row" id="row-lights-count">
+              <div class="slider-header">
+                <span>Quantity / Density</span>
+                <span id="val-lights-count" class="slider-val">40</span>
+              </div>
+              <input type="range" id="setting-lights-count" min="10" max="100" step="5" value="40">
+            </div>
+
+            <!-- Road Benches -->
+            <div class="setting-row">
+              <div class="setting-label">
+                <span class="setting-name">Sidewalk Benches</span>
+                <span class="setting-desc">Classic green wooden slats along sidewalks</span>
+              </div>
+              <label class="switch">
+                <input type="checkbox" id="setting-benches-toggle" checked>
+                <span class="slider round"></span>
+              </label>
+            </div>
+            <div class="setting-slider-row" id="row-benches-count">
+              <div class="slider-header">
+                <span>Quantity</span>
+                <span id="val-benches-count" class="slider-val">20</span>
+              </div>
+              <input type="range" id="setting-benches-count" min="5" max="50" step="5" value="20">
+            </div>
+
+            <!-- Trees -->
+            <div class="setting-row">
+              <div class="setting-label">
+                <span class="setting-name">Boulevard Trees</span>
+                <span class="setting-desc">3D plane trees with lush foliage canopy</span>
+              </div>
+              <label class="switch">
+                <input type="checkbox" id="setting-trees-toggle" checked>
+                <span class="slider round"></span>
+              </label>
+            </div>
+            <div class="setting-slider-row" id="row-trees-count">
+              <div class="slider-header">
+                <span>Quantity</span>
+                <span id="val-trees-count" class="slider-val">45</span>
+              </div>
+              <input type="range" id="setting-trees-count" min="10" max="100" step="5" value="45">
+            </div>
+
+            <!-- Fire Braziers -->
+            <div class="setting-row">
+              <div class="setting-label">
+                <span class="setting-name">Fire Braziers & Torches</span>
+                <span class="setting-desc">Animated glowing flame embers and torches</span>
+              </div>
+              <label class="switch">
+                <input type="checkbox" id="setting-fire-toggle" checked>
+                <span class="slider round"></span>
+              </label>
+            </div>
+            <div class="setting-slider-row" id="row-fire-count">
+              <div class="slider-header">
+                <span>Quantity</span>
+                <span id="val-fire-count" class="slider-val">15</span>
+              </div>
+              <input type="range" id="setting-fire-count" min="5" max="30" step="1" value="15">
+            </div>
+          </div>
+
+          <!-- Environment & World Section -->
+          <div class="settings-section">
+            <div class="section-title">Environment & Graphics</div>
+
+            <div class="setting-slider-row">
+              <div class="slider-header">
+                <div class="setting-label">
+                  <span class="setting-name">Building Render Distance</span>
+                  <span class="setting-desc">Distance of 3D extruded city architecture</span>
+                </div>
+                <span id="val-render-dist" class="slider-val">1500 m</span>
+              </div>
+              <input type="range" id="setting-render-dist" min="300" max="3000" step="100" value="1500">
+            </div>
+          </div>
+
+          <!-- Vehicle Dynamics Section -->
+          <div class="settings-section">
+            <div class="section-title">Vehicle Dynamics & Handling</div>
+
+            <div class="setting-slider-row">
+              <div class="slider-header">
+                <div class="setting-label">
+                  <span class="setting-name">Car Acceleration</span>
+                  <span class="setting-desc">Forward throttle punch and engine torque</span>
+                </div>
+                <span id="val-car-accel" class="slider-val">14 m/s²</span>
+              </div>
+              <input type="range" id="setting-car-accel" min="4" max="25" step="1" value="14">
+            </div>
+
+            <div class="setting-slider-row">
+              <div class="slider-header">
+                <div class="setting-label">
+                  <span class="setting-name">Steering Sensitivity</span>
+                  <span class="setting-desc">Front wheel response & turning sharpness</span>
+                </div>
+                <span id="val-steering-sens" class="slider-val">0.5x</span>
+              </div>
+              <input type="range" id="setting-steering-sens" min="0.2" max="2.0" step="0.05" value="0.5">
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-footer">
+          <button id="btn-settings-reset" class="btn-secondary">Reset to Defaults</button>
+          <button id="btn-settings-done" class="btn-primary">Done</button>
+        </div>
       </div>
     </div>
 

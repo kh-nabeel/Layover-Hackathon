@@ -4,12 +4,13 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
+    "dev": "node node_modules/vite/bin/vite.js",
+    "build": "node node_modules/vite/bin/vite.js build",
+    "preview": "node node_modules/vite/bin/vite.js preview",
     "fetch-routes": "node scripts/fetch-routes.mjs"
   },
   "devDependencies": {
+    "@rolldown/binding-win32-x64-msvc": "^1.2.13",
     "vite": "^8.3.0"
   },
   "dependencies": {

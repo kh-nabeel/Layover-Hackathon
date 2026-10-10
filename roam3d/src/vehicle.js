@@ -174,20 +174,41 @@ export function buildCar(color = 0x0284c7) {
 
   // 10. Front Headlights (Bright LED)
   const headGeo = new THREE.BoxGeometry(0.32, 0.14, 0.08);
+  const headlightMeshes = [];
   [-0.62, 0.62].forEach(x => {
     const hl = new THREE.Mesh(headGeo, headlightMat);
     hl.position.set(x, 0.52, 2.16);
     group.add(hl);
+    headlightMeshes.push(hl);
   });
 
   // 11. Headlight Light Cones / Beams (Cast on road ahead in Street View)
   const beamGeo = new THREE.ConeGeometry(1.3, 8.5, 16, 1, true);
+  const beamMeshes = [];
   [-0.55, 0.55].forEach(x => {
     const beam = new THREE.Mesh(beamGeo, beamMat);
     beam.rotation.x = -Math.PI / 2 + 0.08;
     beam.position.set(x, 0.45, 6.0);
     group.add(beam);
+    beamMeshes.push(beam);
   });
+
+  // Dual forward illumination lights
+  const headlampLights = [];
+  [-0.55, 0.55].forEach(x => {
+    const lamp = new THREE.PointLight(0xfff7d6, 2.5, 25);
+    lamp.position.set(x, 0.55, 2.5);
+    group.add(lamp);
+    headlampLights.push(lamp);
+  });
+
+  group.userData.setHeadlights = (enabled) => {
+    beamMeshes.forEach(b => { b.visible = enabled; });
+    headlampLights.forEach(l => { l.intensity = enabled ? 2.5 : 0; });
+    headlightMeshes.forEach(m => {
+      m.material = enabled ? headlightMat : trimMat;
+    });
+  };
 
   // 12. Rear Taillight Strip (Glowing Red)
   const tailGeo = new THREE.BoxGeometry(1.7, 0.1, 0.06);

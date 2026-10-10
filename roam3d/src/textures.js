@@ -385,10 +385,13 @@ export function createHaussmannWarmFacadeTexture() {
 }
 
 /**
- * Creates high-resolution rooftop texture (256x256) with:
- * - Zinc standing-seam roof plates
- * - Air conditioning chiller & fan condenser units
- * - Satellite dishes & ventilation ducts
+ * Creates high-resolution rooftop AC outdoor unit texture (256x256).
+ * Shows a realistic top-view of split-type air conditioner outdoor units:
+ * - White/grey condenser box with fan grille
+ * - Copper pipe connections
+ * - Condenser fins visible through the grille
+ * - Unit branding color stripe
+ * Multiple units arranged on a flat grey membrane roof.
  */
 export function createRooftopTexture() {
   const canvas = document.createElement('canvas');
@@ -396,85 +399,125 @@ export function createRooftopTexture() {
   canvas.height = 256;
   const ctx = canvas.getContext('2d');
 
-  // Base zinc slate grey
-  ctx.fillStyle = '#4b5563';
+  // Base flat membrane / bitumen roof (very dark grey)
+  ctx.fillStyle = '#2d3340';
   ctx.fillRect(0, 0, 256, 256);
 
-  // Gravel rooftop border / waterproof membrane
-  ctx.fillStyle = '#374151';
-  ctx.fillRect(10, 10, 236, 236);
-
-  // Standing seams
-  ctx.strokeStyle = '#1f2937';
-  ctx.lineWidth = 2;
-  for (let x = 20; x < 240; x += 32) {
-    ctx.beginPath();
-    ctx.moveTo(x, 10);
-    ctx.lineTo(x, 246);
-    ctx.stroke();
+  // Subtle gravel texture
+  for (let i = 0; i < 1200; i++) {
+    const x = Math.random() * 256;
+    const y = Math.random() * 256;
+    const gray = Math.floor(Math.random() * 30 + 35);
+    ctx.fillStyle = `rgb(${gray},${gray+2},${gray+4})`;
+    ctx.fillRect(x, y, 1.5, 1.5);
   }
 
-  // Large Dual-Fan Rooftop Air Conditioner Unit (Center)
-  ctx.fillStyle = '#9ca3af'; // Heavy metal chassis
-  ctx.fillRect(50, 60, 90, 55);
-  ctx.fillStyle = '#111827';
-  // Fan 1
-  ctx.beginPath();
-  ctx.arc(75, 87, 18, 0, Math.PI * 2);
-  ctx.fill();
-  // Fan 2
-  ctx.beginPath();
-  ctx.arc(115, 87, 18, 0, Math.PI * 2);
-  ctx.fill();
+  // Helper: Draw one AC outdoor unit (top-down view)
+  function drawACUnit(ux, uy, unitW, unitH, rotation) {
+    ctx.save();
+    ctx.translate(ux + unitW / 2, uy + unitH / 2);
+    ctx.rotate(rotation || 0);
+    ctx.translate(-unitW / 2, -unitH / 2);
 
-  // Fan grilles & blades
-  ctx.strokeStyle = '#f3f4f6';
-  ctx.lineWidth = 2;
-  [75, 115].forEach(fx => {
-    for (let a = 0; a < Math.PI * 2; a += Math.PI / 3) {
+    // Unit body — off-white / beige casing
+    ctx.fillStyle = '#c8cdd4';
+    ctx.fillRect(0, 0, unitW, unitH);
+    ctx.strokeStyle = '#8a919e';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(0, 0, unitW, unitH);
+
+    // Brand color stripe at top of unit
+    ctx.fillStyle = '#2563eb';
+    ctx.fillRect(0, 0, unitW, 5);
+
+    // Fan grille area
+    const fanCX = unitW * 0.38;
+    const fanCY = unitH * 0.5;
+    const fanR = Math.min(unitW, unitH) * 0.32;
+
+    ctx.fillStyle = '#9ca3af';
+    ctx.beginPath();
+    ctx.arc(fanCX, fanCY, fanR + 2, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#1c2231';
+    ctx.beginPath();
+    ctx.arc(fanCX, fanCY, fanR, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Fan blades
+    ctx.strokeStyle = '#4b5563';
+    ctx.lineWidth = fanR * 0.38;
+    ctx.lineCap = 'round';
+    for (let b = 0; b < 3; b++) {
+      const angle = (b / 3) * Math.PI * 2 + 0.4;
       ctx.beginPath();
-      ctx.moveTo(fx, 87);
-      ctx.lineTo(fx + Math.cos(a) * 16, 87 + Math.sin(a) * 16);
+      ctx.moveTo(fanCX + Math.cos(angle) * 4, fanCY + Math.sin(angle) * 4);
+      ctx.lineTo(fanCX + Math.cos(angle) * fanR * 0.78, fanCY + Math.sin(angle) * fanR * 0.78);
       ctx.stroke();
     }
-  });
-
-  // AC Unit 2 (Single fan condenser)
-  ctx.fillStyle = '#cbd5e1';
-  ctx.fillRect(160, 140, 50, 45);
-  ctx.fillStyle = '#0f172a';
-  ctx.beginPath();
-  ctx.arc(185, 162, 16, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = '#f8fafc';
-  for (let a = 0; a < Math.PI * 2; a += Math.PI / 2) {
+    ctx.fillStyle = '#6b7280';
     ctx.beginPath();
-    ctx.moveTo(185, 162);
-    ctx.lineTo(185 + Math.cos(a) * 14, 162 + Math.sin(a) * 14);
+    ctx.arc(fanCX, fanCY, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#d1d5db';
+    ctx.beginPath();
+    ctx.arc(fanCX, fanCY, 2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Condenser fins (right side)
+    const finX = unitW * 0.65;
+    ctx.fillStyle = '#adb5c0';
+    ctx.fillRect(finX, 6, unitW - finX - 4, unitH - 12);
+    ctx.strokeStyle = '#8a939f';
+    ctx.lineWidth = 0.8;
+    for (let fy = 8; fy < unitH - 6; fy += 3) {
+      ctx.beginPath();
+      ctx.moveTo(finX + 1, fy);
+      ctx.lineTo(unitW - 5, fy);
+      ctx.stroke();
+    }
+
+    // Copper pipes
+    ctx.strokeStyle = '#b45309';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(8, unitH - 2);
+    ctx.lineTo(8, unitH + 5);
     ctx.stroke();
+    ctx.strokeStyle = '#92400e';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(13, unitH - 2);
+    ctx.lineTo(13, unitH + 5);
+    ctx.stroke();
+
+    ctx.restore();
   }
 
-  // Ventilation duct work (galvanized steel pipes)
-  ctx.strokeStyle = '#e2e8f0';
-  ctx.lineWidth = 6;
-  ctx.beginPath();
-  ctx.moveTo(95, 115);
-  ctx.lineTo(95, 180);
-  ctx.lineTo(150, 180);
-  ctx.stroke();
+  // Place multiple AC units
+  drawACUnit(20, 30, 70, 45, 0);
+  drawACUnit(20, 82, 70, 45, 0);
+  drawACUnit(110, 20, 55, 38, 0);
+  drawACUnit(175, 20, 55, 38, 0);
+  drawACUnit(140, 100, 60, 40, Math.PI / 2);
+  drawACUnit(30, 160, 65, 42, 0);
+  drawACUnit(110, 155, 55, 38, Math.PI);
+  drawACUnit(175, 150, 55, 38, 0);
+  drawACUnit(30, 210, 55, 35, Math.PI / 2);
+  drawACUnit(120, 210, 55, 35, 0);
+  drawACUnit(185, 210, 55, 35, Math.PI);
 
-  // Satellite dish
-  ctx.fillStyle = '#e2e8f0';
-  ctx.beginPath();
-  ctx.arc(50, 190, 14, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = '#64748b';
-  ctx.beginPath();
-  ctx.arc(50, 190, 6, 0, Math.PI * 2);
-  ctx.fill();
+  // Roof drainage hatch
+  ctx.fillStyle = '#1a1f2b';
+  ctx.fillRect(200, 80, 28, 20);
+  ctx.strokeStyle = '#374151';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(200, 80, 28, 20);
 
   return ctx.getImageData(0, 0, 256, 256);
 }
+
 
 /**
  * Creates high-resolution road asphalt texture with white dashed lane markings (256x256).
@@ -563,4 +606,388 @@ export function createPavementTexture() {
   }
 
   return ctx.getImageData(0, 0, 256, 256);
+}
+
+/**
+ * Creates ultra-detailed 512x512 asphalt road texture with aggregate mineral speckles,
+ * bitumen pitch, tire wear lines, micro-fissures, and clean border curbs.
+ */
+export function createHighResAsphaltTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+
+  // Deep matte asphalt base
+  ctx.fillStyle = '#1c2027';
+  ctx.fillRect(0, 0, 512, 512);
+
+  // Crushed granite mineral speckles & bitumen texture
+  const imgData = ctx.getImageData(0, 0, 512, 512);
+  const data = imgData.data;
+  for (let i = 0; i < data.length; i += 4) {
+    const noise = (Math.random() - 0.5) * 32;
+    data[i] = Math.max(16, Math.min(65, data[i] + noise));
+    data[i + 1] = Math.max(18, Math.min(68, data[i + 1] + noise));
+    data[i + 2] = Math.max(22, Math.min(74, data[i + 2] + noise));
+  }
+  ctx.putImageData(imgData, 0, 0);
+
+  // Subtle darker oil stains in lane centers
+  const stainGrad = ctx.createLinearGradient(0, 0, 512, 0);
+  stainGrad.addColorStop(0, 'rgba(15, 17, 21, 0.4)');
+  stainGrad.addColorStop(0.28, 'rgba(10, 12, 16, 0.65)');
+  stainGrad.addColorStop(0.5, 'rgba(28, 32, 40, 0.1)');
+  stainGrad.addColorStop(0.72, 'rgba(10, 12, 16, 0.65)');
+  stainGrad.addColorStop(1, 'rgba(15, 17, 21, 0.4)');
+  ctx.fillStyle = stainGrad;
+  ctx.fillRect(0, 0, 512, 512);
+
+  // Tar seam & micro-crack repairs
+  ctx.strokeStyle = '#12151a';
+  ctx.lineWidth = 1.8;
+  ctx.beginPath();
+  ctx.moveTo(80, 0);
+  ctx.bezierCurveTo(85, 160, 72, 320, 90, 512);
+  ctx.moveTo(420, 0);
+  ctx.bezierCurveTo(410, 180, 435, 360, 415, 512);
+  ctx.stroke();
+
+  // Crisp white dashed center lane markings
+  ctx.fillStyle = '#ffffff';
+  for (let y = 30; y < 512; y += 128) {
+    ctx.fillRect(250, y, 12, 70);
+  }
+
+  // Solid edge shoulder lines
+  ctx.fillStyle = 'rgba(240, 244, 255, 0.9)';
+  ctx.fillRect(16, 0, 8, 512);
+  ctx.fillRect(488, 0, 8, 512);
+
+  return ctx.getImageData(0, 0, 512, 512);
+}
+
+/**
+ * Creates 512x512 authentic Parisian sandstone & granite pavement tiles
+ * with bevelled joints, chamfers, and natural stone color variation.
+ */
+export function createParisianPavementTileTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+
+  // Warm Parisian sandstone base
+  ctx.fillStyle = '#cfc5b4';
+  ctx.fillRect(0, 0, 512, 512);
+
+  // Stone block grid (32x64 interlocking pavers)
+  const colors = ['#d8cebe', '#c9bfaf', '#ded4c4', '#c2b8a7', '#d3c9b8'];
+  for (let y = 0; y < 512; y += 32) {
+    const shift = (Math.floor(y / 32) % 2 === 0) ? 0 : 32;
+    for (let x = -32 + shift; x < 544; x += 64) {
+      const col = colors[Math.floor(Math.random() * colors.length)];
+      ctx.fillStyle = col;
+      ctx.fillRect(x + 2, y + 2, 60, 28);
+
+      // Bevel highlight (top & left)
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.22)';
+      ctx.fillRect(x + 2, y + 2, 60, 2);
+      ctx.fillRect(x + 2, y + 2, 2, 28);
+
+      // Bevel shadow (bottom & right)
+      ctx.fillStyle = 'rgba(70, 60, 45, 0.35)';
+      ctx.fillRect(x + 2, y + 28, 60, 2);
+      ctx.fillRect(x + 60, y + 2, 2, 28);
+    }
+  }
+
+  // Dark mortar joints
+  ctx.strokeStyle = '#5a5043';
+  ctx.lineWidth = 2;
+  for (let y = 0; y <= 512; y += 32) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(512, y);
+    ctx.stroke();
+  }
+
+  return ctx.getImageData(0, 0, 512, 512);
+}
+
+/**
+ * Creates authentic Parisian aerial satellite rooftop texture (512x512).
+ * Shows genuine aerial views of Paris:
+ * - Blue-grey zinc standing-seam mansard panels
+ * - Patina copper domes and green roofs
+ * - Terracotta chimneys and ventilation stacks
+ * - Internal courtyards with gravel / paving
+ * - Rooftop skylights, terraces, and HVAC units
+ */
+export function createSatelliteRooftopTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+
+  // 1. Base Parisian zinc / slate aerial tone
+  ctx.fillStyle = '#4a5568';
+  ctx.fillRect(0, 0, 512, 512);
+
+  // Zinc panel color variation (sections of roof)
+  const roofSections = [
+    { x: 0, y: 0, w: 256, h: 256, col: '#505d72' },
+    { x: 256, y: 0, w: 256, h: 256, col: '#455062' },
+    { x: 0, y: 256, w: 256, h: 256, col: '#4c586c' },
+    { x: 256, y: 256, w: 256, h: 256, col: '#3e4856' },
+  ];
+  roofSections.forEach(s => {
+    ctx.fillStyle = s.col;
+    ctx.fillRect(s.x, s.y, s.w, s.h);
+  });
+
+  // 2. Standing-seam zinc roof ridges
+  ctx.strokeStyle = '#2d3748';
+  ctx.lineWidth = 1.5;
+  for (let x = 12; x < 512; x += 24) {
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, 512);
+    ctx.stroke();
+  }
+
+  // 3. Central courtyard with paved stone / gravel
+  ctx.fillStyle = '#2b313b';
+  ctx.fillRect(160, 160, 192, 192);
+  ctx.fillStyle = '#8c8072';
+  ctx.fillRect(170, 170, 172, 172);
+
+  // 4. Weathered copper green accent dormers (Patina de Paris)
+  ctx.fillStyle = '#4e8775';
+  ctx.fillRect(30, 40, 50, 70);
+  ctx.fillRect(430, 40, 50, 70);
+  ctx.fillRect(30, 390, 50, 70);
+  ctx.fillRect(430, 390, 50, 70);
+
+  // 5. Red terracotta chimney pots in Parisian rows
+  ctx.fillStyle = '#9c4221';
+  for (let x = 40; x < 480; x += 55) {
+    // Top row
+    ctx.beginPath();
+    ctx.arc(x, 18, 5, 0, Math.PI * 2);
+    ctx.fill();
+    // Bottom row
+    ctx.beginPath();
+    ctx.arc(x, 494, 5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // 6. Rooftop glass skylights with reflective glint
+  ctx.fillStyle = '#1e3a5f';
+  ctx.fillRect(80, 200, 45, 30);
+  ctx.fillRect(380, 200, 45, 30);
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+  ctx.fillRect(82, 202, 41, 4);
+  ctx.fillRect(382, 202, 41, 4);
+
+  // 7. Rooftop A/C chillers & ventilation ducts
+  ctx.fillStyle = '#a0aec0';
+  ctx.fillRect(190, 60, 70, 40);
+  ctx.fillStyle = '#1a202c';
+  ctx.beginPath();
+  ctx.arc(210, 80, 12, 0, Math.PI * 2);
+  ctx.arc(245, 80, 12, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Satellite dish
+  ctx.fillStyle = '#cbd5e1';
+  ctx.beginPath();
+  ctx.arc(320, 90, 14, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#64748b';
+  ctx.beginPath();
+  ctx.arc(322, 90, 5, 0, Math.PI * 2);
+  ctx.fill();
+
+  return ctx.getImageData(0, 0, 512, 512);
+}
+
+/**
+ * Creates realistic Seine River water texture (512x512) with wave ripples,
+ * deep blue-green currents, and glittering sun caustics.
+ */
+export function createWaterRippleTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+
+  // Deep Seine teal-blue gradient
+  const grad = ctx.createLinearGradient(0, 0, 512, 512);
+  grad.addColorStop(0, '#153e50');
+  grad.addColorStop(0.5, '#1e546d');
+  grad.addColorStop(1, '#18475c');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 512, 512);
+
+  // Wave ripple bands
+  ctx.strokeStyle = 'rgba(102, 187, 217, 0.35)';
+  ctx.lineWidth = 2.5;
+  for (let y = 10; y < 512; y += 22) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    for (let x = 0; x <= 512; x += 40) {
+      const cy = y + Math.sin((x / 512) * Math.PI * 6 + y * 0.1) * 6;
+      ctx.lineTo(x, cy);
+    }
+    ctx.stroke();
+  }
+
+  // Glittering specular sunlight caustic spots
+  ctx.fillStyle = 'rgba(230, 247, 255, 0.55)';
+  for (let i = 0; i < 220; i++) {
+    const x = Math.random() * 512;
+    const y = Math.random() * 512;
+    const r = Math.random() * 2.2 + 0.8;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  return ctx.getImageData(0, 0, 512, 512);
+}
+
+/**
+ * Creates a premium atmospheric Paris sky texture (512x512) with:
+ * - Deep azure to pale horizon gradient
+ * - Visible sun disc with corona glow and light rays
+ * - Volumetric cumulus clouds with soft layering and shadow
+ * - Thin cirrus streaks near zenith
+ * - Warm golden horizon glow
+ */
+export function createSkyTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+
+  // 1. Rich atmospheric gradient – deep azure at top to warm pale horizon
+  const grad = ctx.createLinearGradient(0, 0, 0, 512);
+  grad.addColorStop(0.00, '#0d2a6e');
+  grad.addColorStop(0.12, '#1a3f8f');
+  grad.addColorStop(0.30, '#2468c2');
+  grad.addColorStop(0.55, '#4d92d8');
+  grad.addColorStop(0.75, '#82bde8');
+  grad.addColorStop(0.88, '#b9d9f0');
+  grad.addColorStop(0.95, '#d4e8f5');
+  grad.addColorStop(1.00, '#e8f2fa');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 512, 512);
+
+  // 2. Sun disc with golden corona glow (upper-right area)
+  const sunX = 390;
+  const sunY = 85;
+
+  // Outer corona halo
+  const coronaGrad = ctx.createRadialGradient(sunX, sunY, 8, sunX, sunY, 95);
+  coronaGrad.addColorStop(0.0, 'rgba(255, 248, 180, 0.85)');
+  coronaGrad.addColorStop(0.15, 'rgba(255, 230, 100, 0.55)');
+  coronaGrad.addColorStop(0.35, 'rgba(255, 210, 60, 0.25)');
+  coronaGrad.addColorStop(0.60, 'rgba(255, 195, 30, 0.10)');
+  coronaGrad.addColorStop(1.0,  'rgba(255, 175, 0, 0.00)');
+  ctx.fillStyle = coronaGrad;
+  ctx.beginPath();
+  ctx.arc(sunX, sunY, 95, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Sun body
+  const sunGrad = ctx.createRadialGradient(sunX - 4, sunY - 4, 0, sunX, sunY, 22);
+  sunGrad.addColorStop(0.0, '#fffbe6');
+  sunGrad.addColorStop(0.5, '#ffe680');
+  sunGrad.addColorStop(1.0, '#ffc840');
+  ctx.fillStyle = sunGrad;
+  ctx.beginPath();
+  ctx.arc(sunX, sunY, 22, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Sun rays
+  ctx.save();
+  ctx.translate(sunX, sunY);
+  for (let r = 0; r < 12; r++) {
+    const angle = (r / 12) * Math.PI * 2;
+    const rayLen = 55 + (r % 3) * 20;
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(angle) * 24, Math.sin(angle) * 24);
+    ctx.lineTo(Math.cos(angle) * (24 + rayLen), Math.sin(angle) * (24 + rayLen));
+    ctx.strokeStyle = `rgba(255, 245, 150, ${0.06 + (r % 2) * 0.04})`;
+    ctx.lineWidth = 2 + (r % 3);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // 3. Cumulus clouds with shadow layers
+  function drawCloud(cx, cy, size, alpha) {
+    ctx.save();
+    ctx.globalAlpha = alpha;
+
+    // Shadow (slightly darker offset)
+    ctx.fillStyle = 'rgba(150, 175, 205, 0.48)';
+    [[cx, cy + size * 0.13, size * 0.52], [cx - size * 0.45, cy + size * 0.24, size * 0.35], [cx + size * 0.45, cy + size * 0.20, size * 0.40]].forEach(([px, py, pr]) => {
+      ctx.beginPath();
+      ctx.ellipse(px, py, pr, pr * 0.58, 0, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    // Main white body
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.94)';
+    [[cx, cy, size * 0.52], [cx - size * 0.45, cy + size * 0.15, size * 0.38], [cx + size * 0.42, cy + size * 0.10, size * 0.42], [cx - size * 0.22, cy - size * 0.18, size * 0.35], [cx + size * 0.20, cy - size * 0.22, size * 0.38], [cx, cy - size * 0.10, size * 0.45]].forEach(([px, py, pr]) => {
+      ctx.beginPath();
+      ctx.ellipse(px, py, pr, pr * 0.62, 0, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    // Highlight on top
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.50)';
+    ctx.beginPath();
+    ctx.ellipse(cx - size * 0.05, cy - size * 0.08, size * 0.28, size * 0.18, -0.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  drawCloud(80,  190, 70,  0.88);
+  drawCloud(270, 165, 90,  0.82);
+  drawCloud(440, 250, 62,  0.76);
+  drawCloud(155, 315, 80,  0.70);
+  drawCloud(360, 340, 65,  0.72);
+  drawCloud(65,  390, 55,  0.60);
+  drawCloud(470, 390, 50,  0.58);
+
+  // 4. Thin cirrus streaks near zenith
+  ctx.save();
+  ctx.globalAlpha = 0.22;
+  ctx.strokeStyle = '#e8f4ff';
+  ctx.lineWidth = 2.5;
+  ctx.lineCap = 'round';
+  [[[30, 30], [160, 55], [280, 40]], [[80, 70], [200, 90], [310, 72]], [[295, 20], [410, 38], [510, 25]], [[355, 62], [445, 76]]].forEach(pts => {
+    ctx.beginPath();
+    ctx.moveTo(pts[0][0], pts[0][1]);
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+    ctx.stroke();
+    ctx.globalAlpha = 0.12;
+    ctx.beginPath();
+    ctx.moveTo(pts[0][0], pts[0][1] + 5);
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1] + 5);
+    ctx.stroke();
+    ctx.globalAlpha = 0.22;
+  });
+  ctx.restore();
+
+  // 5. Warm golden horizon glow overlay
+  const horizonGrad = ctx.createLinearGradient(0, 390, 0, 512);
+  horizonGrad.addColorStop(0, 'rgba(255, 220, 130, 0.0)');
+  horizonGrad.addColorStop(1, 'rgba(255, 200, 80, 0.18)');
+  ctx.fillStyle = horizonGrad;
+  ctx.fillRect(0, 390, 512, 122);
+
+  return ctx.getImageData(0, 0, 512, 512);
 }

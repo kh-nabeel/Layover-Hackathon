@@ -67,26 +67,42 @@ export const VEHICLES = {
   car: {
     label: 'Car',
     icon: '🚗',
-    maxSpeed: 60,   // km/h
-    turboSpeed: 120,
-    acceleration: 8,
-    braking: 15,
+    maxSpeed: 110,   // km/h (increased for high responsiveness)
+    turboSpeed: 175,  // km/h
+    acceleration: 14, // m/s^2
+    braking: 18,
   },
   bike: {
     label: 'Bike',
     icon: '🚲',
-    maxSpeed: 25,
-    turboSpeed: 60,
-    acceleration: 4,
-    braking: 8,
+    maxSpeed: 35,
+    turboSpeed: 75,
+    acceleration: 6,
+    braking: 10,
   },
+};
+
+/** Default environment, props, and gameplay settings */
+export const DEFAULT_SETTINGS = {
+  streetLightsEnabled: true,
+  streetLightsCount: 40,
+  benchesEnabled: true,
+  benchesCount: 20,
+  treesEnabled: true,
+  treesCount: 45,
+  fireEnabled: true,
+  fireCount: 15,
+  buildingRenderDistance: 1500, // metres
+  carAcceleration: 14,          // m/s^2
+  steeringSensitivity: 0.5,     // multiplier (lowered for comfortable, smooth steering)
+  headlights: true,
 };
 
 /** How close (metres) to trigger a landmark card */
 export const LANDMARK_TRIGGER_DIST = 80;
 
 /** Autopilot speed factor (km/h, fast for demo) */
-export const AUTOPILOT_SPEED = 80;
+export const AUTOPILOT_SPEED = 85;
 
 /** Layover challenge duration (seconds) */
 export const CHALLENGE_DURATION = 600;

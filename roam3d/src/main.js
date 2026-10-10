@@ -18,6 +18,7 @@ import {
   updateAutopilotBtn, updateCamBtn, updateVehicleBtn, updateChallengeTimer
 } from './hud.js';
 import { initLanding, showHUD, showFinish } from './landing.js';
+import { settings } from './settings.js';
 import {
   createHaussmannFacadeTexture,
   createDarkBlueGlassFacadeTexture,
@@ -26,7 +27,12 @@ import {
   createRooftopTexture,
   createRoadAsphaltTexture,
   createZebraCrossingTexture,
-  createPavementTexture
+  createPavementTexture,
+  createSatelliteRooftopTexture,
+  createWaterRippleTexture,
+  createHighResAsphaltTexture,
+  createParisianPavementTileTexture,
+  createSkyTexture
 } from './textures.js';
 
 // Vite worker setup (required by OpenFreeMap quick-start docs)
@@ -48,20 +54,35 @@ const map = new Map({
 const loadingEl = document.getElementById('loading-overlay');
 const errorEl = document.getElementById('error-overlay');
 
-let tileLoadTimer = setTimeout(() => {
-  // If map hasn't loaded in 12 s, show error hint (tiles may be slow, not broken)
-}, 12000);
-
-map.on('load', () => {
+let mapInitialized = false;
+function finishLoadingAndStart() {
+  if (mapInitialized) return;
+  mapInitialized = true;
   clearTimeout(tileLoadTimer);
-  loadingEl.style.opacity = '0';
-  setTimeout(() => { loadingEl.style.display = 'none'; }, 500);
+
+  if (loadingEl) {
+    loadingEl.style.opacity = '0';
+    setTimeout(() => {
+      loadingEl.style.display = 'none';
+    }, 400);
+  }
+
   onMapLoaded();
+}
+
+// 1. Primary: map load event
+map.on('load', finishLoadingAndStart);
+
+// 2. Secondary: style.load event (fires early when style JSON is parsed)
+map.on('style.load', () => {
+  setTimeout(finishLoadingAndStart, 1500);
 });
+
+// 3. Fallback: never block the user on Loading Paris longer than 3.5 seconds
+const tileLoadTimer = setTimeout(finishLoadingAndStart, 3500);
 
 map.on('error', (e) => {
   console.warn('MapLibre error:', e.error);
-  // Only show hard error if map canvas is completely blank after 15 s
 });
 
 // ─── State ─────────────────────────────────────────────────────────────────
@@ -71,6 +92,7 @@ let camera = null;
 let landmarks = null;
 let gameRunning = false;
 let startTime = 0;
+let collisionTimeout = null;
 
 // Challenge mode
 let challengeActive = false;
@@ -79,24 +101,20 @@ let challengeInterval = null;
 
 // ─── Map Loaded ─────────────────────────────────────────────────────────────
 async function onMapLoaded() {
-  // ── Phase 1: 3D Buildings ──────────────────────────────────────────────
-  setup3DBuildings();
-
-  // ── Load route ────────────────────────────────────────────────────────
-  let routeLoaded = false;
+  // ── Phase 1: 3D Buildings & Environment ──────────────────────────────────
   try {
-    await loadRoute();
-    routeLoaded = true;
+    setup3DBuildings();
   } catch (err) {
-    console.error('Route load failed:', err);
-    errorEl.style.display = 'flex';
-    errorEl.querySelector('.error-msg').textContent =
-      'Could not load route data. Make sure /routes/tour.json exists.';
-    return;
+    console.warn('setup3DBuildings notice:', err);
   }
 
-  // Draw route line on map
-  drawRouteOnMap();
+  // ── Load route ────────────────────────────────────────────────────────
+  try {
+    await loadRoute();
+    drawRouteOnMap();
+  } catch (err) {
+    console.warn('Route load notice:', err);
+  }
 
   // ── Landing screen ────────────────────────────────────────────────────
   initLanding(({ vehicle, autopilot }) => {
@@ -104,37 +122,67 @@ async function onMapLoaded() {
   });
 }
 
+// ─── Helper: Apply Building Render Distance ────────────────────────────────
+function applyBuildingRenderDistance(distMeters) {
+  const minz = Math.max(12.0, Math.min(15.0, 16.2 - (distMeters / 600)));
+  const style = map.getStyle();
+  if (style && style.layers) {
+    const bLayers = style.layers.filter(l => l.type === 'fill-extrusion');
+    bLayers.forEach(l => {
+      try { map.setLayerZoomRange(l.id, minz, 24); } catch (e) {}
+    });
+  }
+  try {
+    if (typeof map.setFog === 'function') {
+      map.setFog({
+        range: [0.5, Math.max(3, distMeters / 140)],
+        color: '#dce5ef',
+        'horizon-blend': 0.08,
+        'high-color': '#a5c8e8',
+        'space-color': '#c7ddf0',
+      });
+    }
+  } catch (e) {}
+}
+
 // ─── 3D Buildings, Textures & Satellite Environment Setup ──────────────────
 function setup3DBuildings() {
   // 1. Register high-resolution procedural textures with real-world architectural scaling
   try {
     if (!map.hasImage('facade-glass-blue')) {
-      // Modern full-glass commercial city tower windows with dark blue tint
       map.addImage('facade-glass-blue', createDarkBlueGlassFacadeTexture(), { pixelRatio: 10 });
     }
     if (!map.hasImage('facade-city-modern')) {
-      // Contemporary urban mixed granite & blue reflective glass facade
       map.addImage('facade-city-modern', createCityModernFacadeTexture(), { pixelRatio: 10 });
     }
     if (!map.hasImage('facade-haussmann')) {
-      // Classical Parisian Haussmann limestone with French balconies (3.2m floor scale)
       map.addImage('facade-haussmann', createHaussmannFacadeTexture(), { pixelRatio: 10 });
     }
     if (!map.hasImage('facade-haussmann-warm')) {
-      // Warm blonde Parisian townhouse stone with classical French casement windows
       map.addImage('facade-haussmann-warm', createHaussmannWarmFacadeTexture(), { pixelRatio: 10 });
     }
-    if (!map.hasImage('roof-ac-units')) {
-      map.addImage('roof-ac-units', createRooftopTexture(), { pixelRatio: 8 });
+    if (!map.hasImage('roof-satellite-paris')) {
+      // Authentic Paris aerial satellite rooftop photography texture
+      map.addImage('roof-satellite-paris', createSatelliteRooftopTexture(), { pixelRatio: 4 });
     }
-    if (!map.hasImage('road-asphalt')) {
-      map.addImage('road-asphalt', createRoadAsphaltTexture(), { pixelRatio: 4 });
+    if (!map.hasImage('water-seine-ripples')) {
+      // River Seine procedural water ripples & wave caustics texture
+      map.addImage('water-seine-ripples', createWaterRippleTexture(), { pixelRatio: 2 });
+    }
+    if (!map.hasImage('road-asphalt-hd')) {
+      // High-resolution asphalt texture with bitumen & mineral aggregate
+      map.addImage('road-asphalt-hd', createHighResAsphaltTexture(), { pixelRatio: 4 });
+    }
+    if (!map.hasImage('pavement-stone-hd')) {
+      // Authentic Parisian sandstone & granite stone footpath tiles
+      map.addImage('pavement-stone-hd', createParisianPavementTileTexture(), { pixelRatio: 4 });
     }
     if (!map.hasImage('crosswalk-zebra')) {
       map.addImage('crosswalk-zebra', createZebraCrossingTexture(), { pixelRatio: 4 });
     }
-    if (!map.hasImage('pavement-stone')) {
-      map.addImage('pavement-stone', createPavementTexture(), { pixelRatio: 4 });
+    if (!map.hasImage('roof-ac-units')) {
+      // AC outdoor unit top-down texture for building rooftops
+      map.addImage('roof-ac-units', createRooftopTexture(), { pixelRatio: 4 });
     }
   } catch (err) {
     console.warn('Texture registration notice:', err);
@@ -144,7 +192,6 @@ function setup3DBuildings() {
 
   // Identify building layer ID so all ground, satellite, road, and route layers
   // are guaranteed to be placed BEFORE (underneath) buildings.
-  // This completely eliminates roads showing through 3D buildings!
   const buildingLayer = layers.find(
     l => l.type === 'fill-extrusion' || (l.type === 'fill' && (l['source-layer'] === 'building' || l.id.includes('building')))
   );
@@ -184,9 +231,27 @@ function setup3DBuildings() {
     console.warn('Satellite layer notice:', e);
   }
 
-  // 3. Real-World Scaled Road Surfaces (Placed strictly BEFORE buildings)
+  // 3. Seine River Textured Water Layer
   try {
-    // A. Major Boulevards & Avenues (Champs-Élysées, Saint-Germain, etc. ~20m real width)
+    if (!map.getLayer('roam3d-water-textured')) {
+      map.addLayer({
+        id: 'roam3d-water-textured',
+        type: 'fill',
+        source: 'openmaptiles',
+        'source-layer': 'water',
+        paint: {
+          'fill-pattern': 'water-seine-ripples',
+          'fill-opacity': 0.95,
+        },
+      }, buildingBeforeId);
+    }
+  } catch (e) {
+    console.warn('Water texture layer notice:', e);
+  }
+
+  // 4. Real-World Scaled Road Surfaces & High-Resolution Textures
+  try {
+    // A. Major Boulevards & Avenues (Champs-Élysées, Saint-Germain ~20m real width)
     if (!map.getLayer('roam3d-roads-primary')) {
       map.addLayer({
         id: 'roam3d-roads-primary',
@@ -196,7 +261,7 @@ function setup3DBuildings() {
         filter: ['in', 'class', 'motorway', 'trunk', 'primary'],
         layout: { 'line-join': 'round', 'line-cap': 'round' },
         paint: {
-          'line-color': '#1c2026',
+          'line-color': '#181c22',
           'line-width': [
             'interpolate', ['linear'], ['zoom'],
             14, 3.5,
@@ -206,7 +271,7 @@ function setup3DBuildings() {
             19, 104,
             20, 208,
           ],
-          'line-opacity': 0.95,
+          'line-opacity': 0.98,
         },
       }, buildingBeforeId);
     }
@@ -221,7 +286,7 @@ function setup3DBuildings() {
         filter: ['in', 'class', 'secondary', 'tertiary'],
         layout: { 'line-join': 'round', 'line-cap': 'round' },
         paint: {
-          'line-color': '#21252d',
+          'line-color': '#1d2128',
           'line-width': [
             'interpolate', ['linear'], ['zoom'],
             14, 2.5,
@@ -231,7 +296,7 @@ function setup3DBuildings() {
             19, 68,
             20, 136,
           ],
-          'line-opacity': 0.95,
+          'line-opacity': 0.96,
         },
       }, buildingBeforeId);
     }
@@ -246,7 +311,7 @@ function setup3DBuildings() {
         filter: ['!in', 'class', 'motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'rail'],
         layout: { 'line-join': 'round', 'line-cap': 'round' },
         paint: {
-          'line-color': '#242932',
+          'line-color': '#20252d',
           'line-width': [
             'interpolate', ['linear'], ['zoom'],
             14, 1.5,
@@ -256,12 +321,12 @@ function setup3DBuildings() {
             19, 41,
             20, 82,
           ],
-          'line-opacity': 0.92,
+          'line-opacity': 0.94,
         },
       }, buildingBeforeId);
     }
 
-    // D. White Dashed Center Lane Stripes on Boulevards and Main Roads (~0.25m real width)
+    // D. White Dashed Center Lane Stripes on Boulevards
     if (!map.getLayer('roam3d-roads-lanes')) {
       map.addLayer({
         id: 'roam3d-roads-lanes',
@@ -273,19 +338,42 @@ function setup3DBuildings() {
           'line-color': '#ffffff',
           'line-width': [
             'interpolate', ['linear'], ['zoom'],
-            16, 1.0,
-            17, 1.6,
-            18, 2.8,
-            19, 5.2,
-            20, 10.4,
+            16, 1.2,
+            17, 1.8,
+            18, 3.2,
+            19, 5.8,
+            20, 11.2,
           ],
           'line-dasharray': [3, 4],
-          'line-opacity': 0.88,
+          'line-opacity': 0.9,
         },
       }, buildingBeforeId);
     }
 
-    // E. Parisian Sidewalk Pavements (~4m real width)
+    // E. 3D Projected Raised Road Median Divider on Main Boulevards
+    if (!map.getLayer('roam3d-roads-divider-3d')) {
+      map.addLayer({
+        id: 'roam3d-roads-divider-3d',
+        type: 'line',
+        source: 'openmaptiles',
+        'source-layer': 'transportation',
+        filter: ['in', 'class', 'motorway', 'trunk', 'primary'],
+        paint: {
+          'line-color': '#e2e8f0', // Raised concrete divider curb
+          'line-width': [
+            'interpolate', ['linear'], ['zoom'],
+            15, 1.6,
+            17, 3.8,
+            18, 7.5,
+            19, 15.0,
+            20, 30.0,
+          ],
+          'line-opacity': 0.98,
+        },
+      }, buildingBeforeId);
+    }
+
+    // F. Parisian Sidewalk Footpath Stone Tile Texture
     if (!map.getLayer('roam3d-pavements')) {
       map.addLayer({
         id: 'roam3d-pavements',
@@ -294,16 +382,16 @@ function setup3DBuildings() {
         'source-layer': 'transportation',
         filter: ['in', 'class', 'path', 'pedestrian', 'footway'],
         paint: {
-          'line-color': '#ded5c7',
+          'line-pattern': 'pavement-stone-hd',
           'line-width': [
             'interpolate', ['linear'], ['zoom'],
-            15, 2.5,
-            17, 5,
-            18, 10,
-            19, 21,
-            20, 42,
+            15, 3.0,
+            17, 6.0,
+            18, 12.0,
+            19, 24.0,
+            20, 48.0,
           ],
-          'line-opacity': 0.88,
+          'line-opacity': 0.95,
         },
       }, buildingBeforeId);
     }
@@ -311,88 +399,110 @@ function setup3DBuildings() {
     console.warn('Road overlays notice:', e);
   }
 
-  // 4. 3D Solid Textured Buildings (Rendered ON TOP of all road and satellite layers)
-  // Data-driven variety: tall buildings get dark blue tinted full-glass windows,
-  // mid-rise buildings get modern urban commercial facade, and classic buildings get Haussmann facades.
-  const buildingPatternExpression = [
-    'case',
-    ['>', ['coalesce', ['get', 'render_height'], ['get', 'height'], 20], 28], 'facade-glass-blue',
-    ['>', ['coalesce', ['get', 'render_height'], ['get', 'height'], 20], 22], 'facade-city-modern',
-    ['==', ['%', ['coalesce', ['to-number', ['id']], 0], 2], 0], 'facade-haussmann',
-    'facade-haussmann-warm'
-  ];
+  // 5. 3D Buildings – Authentic window facades on walls + 3D AC outdoor unit caps on roofs
+  try {
+    // Window facade textures for building walls (towers get dark blue glass, mid-rise modern, classic Haussmann)
+    const buildingPatternExpression = [
+      'case',
+      ['>', ['coalesce', ['get', 'render_height'], ['get', 'height'], 20], 28], 'facade-glass-blue',
+      ['>', ['coalesce', ['get', 'render_height'], ['get', 'height'], 20], 22], 'facade-city-modern',
+      ['==', ['%', ['coalesce', ['to-number', ['id']], 0], 2], 0], 'facade-haussmann',
+      'facade-haussmann-warm'
+    ];
 
-  const existingExtrusionLayer = layers.find(
-    l => l.type === 'fill-extrusion' && (l['source-layer'] === 'building' || l.id.includes('building'))
-  );
+    const existingExtrusionLayer = layers.find(
+      l => l.type === 'fill-extrusion' && (l['source-layer'] === 'building' || l.id.includes('building'))
+    );
 
-  if (existingExtrusionLayer) {
-    map.setPaintProperty(existingExtrusionLayer.id, 'fill-extrusion-pattern', buildingPatternExpression);
-    // Solid 1.0 opacity: completely occludes roads and satellite ground behind or underneath
-    map.setPaintProperty(existingExtrusionLayer.id, 'fill-extrusion-opacity', 1.0);
-    map.setPaintProperty(existingExtrusionLayer.id, 'fill-extrusion-height', [
-      'interpolate', ['linear'], ['zoom'],
-      13.5, 0,
-      14.5, ['coalesce', ['get', 'render_height'], ['get', 'height'], 20],
-    ]);
-    map.setPaintProperty(existingExtrusionLayer.id, 'fill-extrusion-base', [
-      'interpolate', ['linear'], ['zoom'],
-      13.5, 0,
-      14.5, ['coalesce', ['get', 'render_min_height'], ['get', 'min_height'], 0],
-    ]);
-    try {
-      map.setPaintProperty(existingExtrusionLayer.id, 'fill-extrusion-vertical-gradient', true);
-    } catch (e) {}
-  } else {
-    const labelLayer = layers.find(l => l.type === 'symbol');
-    const beforeId = labelLayer ? labelLayer.id : undefined;
+    if (existingExtrusionLayer) {
+      map.setPaintProperty(existingExtrusionLayer.id, 'fill-extrusion-pattern', buildingPatternExpression);
+      map.setPaintProperty(existingExtrusionLayer.id, 'fill-extrusion-opacity', 1.0);
+      map.setPaintProperty(existingExtrusionLayer.id, 'fill-extrusion-height', [
+        'interpolate', ['linear'], ['zoom'],
+        13.5, 0,
+        14.5, ['coalesce', ['get', 'render_height'], ['get', 'height'], 20],
+      ]);
+      map.setPaintProperty(existingExtrusionLayer.id, 'fill-extrusion-base', [
+        'interpolate', ['linear'], ['zoom'],
+        13.5, 0,
+        14.5, ['coalesce', ['get', 'render_min_height'], ['get', 'min_height'], 0],
+      ]);
+      try { map.setPaintProperty(existingExtrusionLayer.id, 'fill-extrusion-vertical-gradient', true); } catch (e) {}
+    } else {
+      const labelLayer = layers.find(l => l.type === 'symbol');
+      const beforeId = labelLayer ? labelLayer.id : undefined;
+      map.addLayer({
+        id: 'roam3d-buildings',
+        type: 'fill-extrusion',
+        source: 'openmaptiles',
+        'source-layer': 'building',
+        minzoom: 13.5,
+        paint: {
+          'fill-extrusion-pattern': buildingPatternExpression,
+          'fill-extrusion-height': [
+            'interpolate', ['linear'], ['zoom'],
+            13.5, 0,
+            14.5, ['coalesce', ['get', 'render_height'], ['get', 'height'], 20],
+          ],
+          'fill-extrusion-base': [
+            'interpolate', ['linear'], ['zoom'],
+            13.5, 0,
+            14.5, ['coalesce', ['get', 'render_min_height'], ['get', 'min_height'], 0],
+          ],
+          'fill-extrusion-opacity': 1.0,
+          'fill-extrusion-vertical-gradient': true,
+        },
+      }, beforeId);
+    }
 
-    map.addLayer({
-      id: 'roam3d-buildings',
-      type: 'fill-extrusion',
-      source: 'openmaptiles',
-      'source-layer': 'building',
-      minzoom: 13.5,
-      paint: {
-        'fill-extrusion-pattern': buildingPatternExpression,
-        'fill-extrusion-height': [
-          'interpolate', ['linear'], ['zoom'],
-          13.5, 0,
-          14.5, ['coalesce', ['get', 'render_height'], ['get', 'height'], 20],
-        ],
-        'fill-extrusion-base': [
-          'interpolate', ['linear'], ['zoom'],
-          13.5, 0,
-          14.5, ['coalesce', ['get', 'render_min_height'], ['get', 'min_height'], 0],
-        ],
-        'fill-extrusion-opacity': 1.0,
-        'fill-extrusion-vertical-gradient': true,
-      },
-    }, beforeId);
+    // Dedicated 3D Rooftop Cap layer: Renders the AC outdoor unit texture directly on the roofs
+    // Base is 0.2m below roof height, so the top face displays the AC unit texture
+    // without repeating it down the sides of the buildings!
+    if (!map.getLayer('roam3d-rooftop-caps')) {
+      const labelLayer = layers.find(l => l.type === 'symbol');
+      map.addLayer({
+        id: 'roam3d-rooftop-caps',
+        type: 'fill-extrusion',
+        source: 'openmaptiles',
+        'source-layer': 'building',
+        minzoom: 13.5,
+        paint: {
+          'fill-extrusion-pattern': 'roof-ac-units',
+          'fill-extrusion-height': [
+            'interpolate', ['linear'], ['zoom'],
+            13.5, 0,
+            14.5, ['+', ['coalesce', ['get', 'render_height'], ['get', 'height'], 20], 0.08],
+          ],
+          'fill-extrusion-base': [
+            'interpolate', ['linear'], ['zoom'],
+            13.5, 0,
+            14.5, ['max', 0, ['-', ['coalesce', ['get', 'render_height'], ['get', 'height'], 20], 0.20]],
+          ],
+          'fill-extrusion-opacity': 0.98,
+        },
+      }, labelLayer ? labelLayer.id : undefined);
+    }
+
+    // Clean up any old ground-level flat rooftop fill layer
+    if (map.getLayer('roam3d-rooftops')) {
+      try { map.removeLayer('roam3d-rooftops'); } catch (e) {}
+    }
+  } catch (e) {
+    console.warn('3D Buildings setup notice:', e);
   }
 
-  // 5. Realistic daylight Paris sky & atmospheric horizon for Street View
+  // Apply initial building render distance setting
+  applyBuildingRenderDistance(settings.get('buildingRenderDistance'));
+
+  // 6. Realistic daylight Paris sky & atmospheric horizon for Street View
   try {
     if (typeof map.setSky === 'function') {
       map.setSky({
-        'sky-color': '#7ec0ee',
-        'horizon-color': '#dceaf7',
-        'fog-color': '#cfdfee',
-        'atmosphere-blend': 0.85,
-      });
-    }
-  } catch (e) {}
-
-  // 6. Atmospheric fog for immersive street-level depth
-  try {
-    if (typeof map.setFog === 'function') {
-      map.setFog({
-        'range': [0.5, 12],
-        'color': '#dce5ef',
-        'horizon-blend': 0.08,
-        'high-color': '#a5c8e8',
-        'space-color': '#c7ddf0',
-        'star-intensity': 0,
+        'sky-color': '#1a3f8f',
+        'horizon-color': '#82bde8',
+        'fog-color': '#b9d9f0',
+        'atmosphere-blend': 0.92,
+        'sky-horizon-blend': 0.5,
       });
     }
   } catch (e) {}
@@ -471,6 +581,8 @@ function startGame(vehicleType, autopilotMode) {
   driving = new DrivingState();
   driving.vehicleType = vehicleType;
   driving.autopilot = autopilotMode;
+  driving.accelerationMultiplier = (settings.get('carAcceleration') || 14) / 14;
+  driving.steeringSensitivity = settings.get('steeringSensitivity') ?? 0.5;
 
   // Camera
   camera = new CameraController(map);
@@ -479,6 +591,17 @@ function startGame(vehicleType, autopilotMode) {
   vehicleLayer = new VehicleLayer();
   map.addLayer(vehicleLayer);
   vehicleLayer.setVehicleType(vehicleType);
+
+  const routeLine = getRouteLine();
+  if (routeLine && vehicleLayer.propsManager) {
+    vehicleLayer.propsManager.loadRouteProps(routeLine);
+  }
+
+  // Sync initial props settings
+  ['streetLights', 'benches', 'trees', 'fire'].forEach(prop => {
+    vehicleLayer.updateProps(`${prop}Enabled`, settings.get(`${prop}Enabled`), settings.state);
+  });
+  vehicleLayer.setHeadlights(settings.get('headlights'));
 
   // Landmarks
   landmarks = new LandmarkManager(map);
@@ -505,7 +628,7 @@ function startGame(vehicleType, autopilotMode) {
     driving.paused = false;
   });
 
-  // Wire up HUD buttons
+  // ─── Wire up HUD Buttons ──────────────────────────────────────────────────
   document.getElementById('btn-autopilot').addEventListener('click', () => {
     driving.autopilot = !driving.autopilot;
     updateAutopilotBtn(driving.autopilot);
@@ -521,13 +644,175 @@ function startGame(vehicleType, autopilotMode) {
     el.textContent = enabled ? '🔇 Voice' : '🔊 Voice';
   });
 
-  // Toggle landmarks on/off button
+  // ─── Toggle All Writings & Landmarks On/Off ───────────────────────────────
   const btnLandmarks = document.getElementById('btn-landmarks');
-  if (btnLandmarks) {
-    btnLandmarks.addEventListener('click', () => {
-      const visible = landmarks.toggleVisible();
+  function toggleAllWritings() {
+    const visible = landmarks.toggleVisible();
+    try {
+      const style = map.getStyle();
+      if (style && style.layers) {
+        style.layers.forEach(l => {
+          if (l.type === 'symbol') {
+            map.setLayoutProperty(l.id, 'visibility', visible ? 'visible' : 'none');
+          }
+        });
+      }
+    } catch (e) {}
+
+    const hudLm = document.getElementById('hud-landmark-block');
+    if (hudLm) {
+      hudLm.style.opacity = visible ? '1' : '0';
+    }
+
+    if (btnLandmarks) {
       btnLandmarks.classList.toggle('active', visible);
-      btnLandmarks.textContent = visible ? '🏛️ Landmarks' : '🏛️ Landmarks Off';
+      const span = btnLandmarks.querySelector('span');
+      if (span) span.textContent = visible ? 'Landmarks' : 'Labels Off';
+    }
+    return visible;
+  }
+
+  if (btnLandmarks) {
+    btnLandmarks.addEventListener('click', toggleAllWritings);
+  }
+
+  // ─── Headlights Toggle ────────────────────────────────────────────────────
+  let headlightsOn = settings.get('headlights');
+  const btnHeadlights = document.getElementById('btn-headlights');
+  function toggleHeadlights() {
+    headlightsOn = !headlightsOn;
+    settings.set('headlights', headlightsOn);
+    if (vehicleLayer) vehicleLayer.setHeadlights(headlightsOn);
+    if (btnHeadlights) btnHeadlights.classList.toggle('active', headlightsOn);
+  }
+  if (btnHeadlights) {
+    btnHeadlights.classList.toggle('active', headlightsOn);
+    btnHeadlights.addEventListener('click', toggleHeadlights);
+  }
+
+  // ─── Settings Modal Wiring ────────────────────────────────────────────────
+  const settingsModal = document.getElementById('settings-modal');
+  const btnSettings = document.getElementById('btn-settings');
+  const btnSettingsClose = document.getElementById('btn-settings-close');
+  const btnSettingsDone = document.getElementById('btn-settings-done');
+  const btnSettingsReset = document.getElementById('btn-settings-reset');
+
+  function openSettings() {
+    if (settingsModal) settingsModal.style.display = 'flex';
+  }
+  function closeSettings() {
+    if (settingsModal) settingsModal.style.display = 'none';
+  }
+
+  if (btnSettings) btnSettings.addEventListener('click', openSettings);
+  if (btnSettingsClose) btnSettingsClose.addEventListener('click', closeSettings);
+  if (btnSettingsDone) btnSettingsDone.addEventListener('click', closeSettings);
+  document.querySelector('.settings-backdrop')?.addEventListener('click', closeSettings);
+
+  // Sync settings inputs with current state
+  function syncSettingsUI() {
+    const s = settings.state;
+    // Lights
+    const tLights = document.getElementById('setting-lights-toggle');
+    const cLights = document.getElementById('setting-lights-count');
+    if (tLights) tLights.checked = s.streetLightsEnabled;
+    if (cLights) { cLights.value = s.streetLightsCount; document.getElementById('val-lights-count').textContent = s.streetLightsCount; }
+    // Benches
+    const tBenches = document.getElementById('setting-benches-toggle');
+    const cBenches = document.getElementById('setting-benches-count');
+    if (tBenches) tBenches.checked = s.benchesEnabled;
+    if (cBenches) { cBenches.value = s.benchesCount; document.getElementById('val-benches-count').textContent = s.benchesCount; }
+    // Trees
+    const tTrees = document.getElementById('setting-trees-toggle');
+    const cTrees = document.getElementById('setting-trees-count');
+    if (tTrees) tTrees.checked = s.treesEnabled;
+    if (cTrees) { cTrees.value = s.treesCount; document.getElementById('val-trees-count').textContent = s.treesCount; }
+    // Fire
+    const tFire = document.getElementById('setting-fire-toggle');
+    const cFire = document.getElementById('setting-fire-count');
+    if (tFire) tFire.checked = s.fireEnabled;
+    if (cFire) { cFire.value = s.fireCount; document.getElementById('val-fire-count').textContent = s.fireCount; }
+    // Render dist
+    const rDist = document.getElementById('setting-render-dist');
+    if (rDist) { rDist.value = s.buildingRenderDistance; document.getElementById('val-render-dist').textContent = `${s.buildingRenderDistance} m`; }
+    // Accel & Steering
+    const cAccel = document.getElementById('setting-car-accel');
+    if (cAccel) { cAccel.value = s.carAcceleration; document.getElementById('val-car-accel').textContent = `${s.carAcceleration} m/s²`; }
+    const sSens = document.getElementById('setting-steering-sens');
+    if (sSens) { sSens.value = s.steeringSensitivity; document.getElementById('val-steering-sens').textContent = `${s.steeringSensitivity}x`; }
+  }
+  syncSettingsUI();
+
+  // Settings Input Listeners
+  document.getElementById('setting-lights-toggle')?.addEventListener('change', (e) => {
+    settings.set('streetLightsEnabled', e.target.checked);
+    vehicleLayer.updateProps('streetLightsEnabled', e.target.checked, settings.state);
+  });
+  document.getElementById('setting-lights-count')?.addEventListener('input', (e) => {
+    const val = parseInt(e.target.value);
+    document.getElementById('val-lights-count').textContent = val;
+    settings.set('streetLightsCount', val);
+    vehicleLayer.updateProps('streetLightsCount', val, settings.state);
+  });
+
+  document.getElementById('setting-benches-toggle')?.addEventListener('change', (e) => {
+    settings.set('benchesEnabled', e.target.checked);
+    vehicleLayer.updateProps('benchesEnabled', e.target.checked, settings.state);
+  });
+  document.getElementById('setting-benches-count')?.addEventListener('input', (e) => {
+    const val = parseInt(e.target.value);
+    document.getElementById('val-benches-count').textContent = val;
+    settings.set('benchesCount', val);
+    vehicleLayer.updateProps('benchesCount', val, settings.state);
+  });
+
+  document.getElementById('setting-trees-toggle')?.addEventListener('change', (e) => {
+    settings.set('treesEnabled', e.target.checked);
+    vehicleLayer.updateProps('treesEnabled', e.target.checked, settings.state);
+  });
+  document.getElementById('setting-trees-count')?.addEventListener('input', (e) => {
+    const val = parseInt(e.target.value);
+    document.getElementById('val-trees-count').textContent = val;
+    settings.set('treesCount', val);
+    vehicleLayer.updateProps('treesCount', val, settings.state);
+  });
+
+  document.getElementById('setting-fire-toggle')?.addEventListener('change', (e) => {
+    settings.set('fireEnabled', e.target.checked);
+    vehicleLayer.updateProps('fireEnabled', e.target.checked, settings.state);
+  });
+  document.getElementById('setting-fire-count')?.addEventListener('input', (e) => {
+    const val = parseInt(e.target.value);
+    document.getElementById('val-fire-count').textContent = val;
+    settings.set('fireCount', val);
+    vehicleLayer.updateProps('fireCount', val, settings.state);
+  });
+
+  document.getElementById('setting-render-dist')?.addEventListener('input', (e) => {
+    const val = parseInt(e.target.value);
+    document.getElementById('val-render-dist').textContent = `${val} m`;
+    settings.set('buildingRenderDistance', val);
+    applyBuildingRenderDistance(val);
+  });
+
+  document.getElementById('setting-car-accel')?.addEventListener('input', (e) => {
+    const val = parseInt(e.target.value);
+    document.getElementById('val-car-accel').textContent = `${val} m/s²`;
+    settings.set('carAcceleration', val);
+    driving.accelerationMultiplier = val / 14;
+  });
+
+  document.getElementById('setting-steering-sens')?.addEventListener('input', (e) => {
+    const val = parseFloat(e.target.value);
+    document.getElementById('val-steering-sens').textContent = `${val.toFixed(1)}x`;
+    settings.set('steeringSensitivity', val);
+    driving.steeringSensitivity = val;
+  });
+
+  if (btnSettingsReset) {
+    btnSettingsReset.addEventListener('click', () => {
+      localStorage.removeItem('roam3d_settings');
+      location.reload();
     });
   }
 
@@ -538,8 +823,7 @@ function startGame(vehicleType, autopilotMode) {
   });
   document.getElementById('btn-challenge').addEventListener('click', toggleChallenge);
 
-  // Shortcut keys (V = vehicle, C = camera, P = autopilot, L = landmarks)
-  // NOTE: A/D are reserved for WASD steering — do NOT bind autopilot to A!
+  // Shortcut keys (V = vehicle, C = camera, P = autopilot, L = landmarks, H = headlights, O = settings)
   window.addEventListener('keydown', (e) => {
     if (!gameRunning) return;
     if (e.code === 'KeyV') {
@@ -556,11 +840,14 @@ function startGame(vehicleType, autopilotMode) {
       updateAutopilotBtn(driving.autopilot);
     }
     if (e.code === 'KeyL') {
-      const visible = landmarks.toggleVisible();
-      if (btnLandmarks) {
-        btnLandmarks.classList.toggle('active', visible);
-        btnLandmarks.textContent = visible ? '🏛️ Landmarks' : '🏛️ Landmarks Off';
-      }
+      toggleAllWritings();
+    }
+    if (e.code === 'KeyH') {
+      toggleHeadlights();
+    }
+    if (e.code === 'KeyO') {
+      if (settingsModal.style.display === 'flex') closeSettings();
+      else openSettings();
     }
   });
 
@@ -569,7 +856,7 @@ function startGame(vehicleType, autopilotMode) {
   updateCamBtn('street');
   updateVehicleBtn(vehicleType);
 
-  // Wire on-screen gas and brake pedals (for touch/click driving)
+  // Wire on-screen gas and brake pedals
   const btnGas = document.getElementById('btn-gas');
   const btnBrake = document.getElementById('btn-brake');
   const btnSteerLeft = document.getElementById('btn-steer-left');
@@ -613,7 +900,8 @@ function startGame(vehicleType, autopilotMode) {
         map.setPaintProperty('satellite-base', 'raster-opacity', satActive ? 0.88 : 0);
       }
       btnSat.classList.toggle('active', satActive);
-      btnSat.textContent = satActive ? '🛰️ Satellite' : '🗺️ Map';
+      const span = btnSat.querySelector('span');
+      if (span) span.textContent = satActive ? 'Satellite' : 'Map';
     });
   }
 
@@ -622,7 +910,18 @@ function startGame(vehicleType, autopilotMode) {
     driving.paused = document.hidden;
   });
 
-  // Start game loop
+  // Collision Impact Flash Visual Effect
+  function triggerCollisionImpact() {
+    const overlay = document.getElementById('collision-overlay');
+    if (!overlay) return;
+    overlay.classList.add('active');
+    if (collisionTimeout) clearTimeout(collisionTimeout);
+    collisionTimeout = setTimeout(() => {
+      overlay.classList.remove('active');
+    }, 400);
+  }
+
+  // ─── Start Game Loop ──────────────────────────────────────────────────────
   let lastTs = performance.now();
   function loop(ts) {
     if (!gameRunning) return;
@@ -632,6 +931,33 @@ function startGame(vehicleType, autopilotMode) {
     if (!document.hidden) {
       const result = driving.tick(dt);
       if (result) {
+        // ─── 3D Building Collision Detection ────────────────────────────────
+        if (!driving.autopilot && Math.abs(result.speedKmh) > 1.2) {
+          try {
+            const screenPt = map.project(result.lngLat);
+            const bbox = [
+              [screenPt.x - 4, screenPt.y - 4],
+              [screenPt.x + 4, screenPt.y + 4]
+            ];
+            const bldLayer = map.getLayer('building-3d') ? 'building-3d' : (map.getLayer('roam3d-buildings') ? 'roam3d-buildings' : null);
+            const hits = bldLayer ? map.queryRenderedFeatures(bbox, {
+              layers: [bldLayer]
+            }) : [];
+            if (hits && hits.length > 0) {
+              const bounced = driving.handleCollision();
+              if (bounced) {
+                triggerCollisionImpact();
+              }
+            } else {
+              driving.lastSafeCoord = [...result.lngLat];
+            }
+          } catch (e) {
+            driving.lastSafeCoord = [...result.lngLat];
+          }
+        } else {
+          driving.lastSafeCoord = [...result.lngLat];
+        }
+
         // Update vehicle layer position and front wheel steering
         vehicleLayer.setPosition(result.lngLat, result.bearing);
         vehicleLayer.setSteering(result.steeringAngle);
@@ -648,7 +974,6 @@ function startGame(vehicleType, autopilotMode) {
           const lm = LANDMARKS[landmarkPts.indexOf(p)];
           return lm && !landmarks.visited.has(lm.id);
         });
-        // Simpler: find first unvisited landmark by distance
         const nextLm = LANDMARKS.find(lm => !landmarks.visited.has(lm.id));
         const distToNext = nextLm
           ? haversineM(result.lngLat, nextLm.coord)
@@ -657,7 +982,6 @@ function startGame(vehicleType, autopilotMode) {
         updateHUD(result, nextLm, distToNext);
 
         if (driving.finished && !landmarks.isAllVisited()) {
-          // Route ended but not all landmarks visited – show finish anyway
           endGame();
         }
       }
