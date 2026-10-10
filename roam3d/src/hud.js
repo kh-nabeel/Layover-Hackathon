@@ -52,10 +52,26 @@ export function markLandmarkVisited(index) {
   if (dot) dot.classList.add('visited');
 }
 
+// SVG snippets for camera mode labels (inline, monochromatic)
+const CAM_SVGS = {
+  street: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>`,
+  chase:  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><path d="M5 17H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2l2-3h10l2 3h2a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-2"/><circle cx="7.5" cy="17" r="2.5"/><circle cx="16.5" cy="17" r="2.5"/></svg>`,
+  orbit:  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>`,
+  top:    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/></svg>`,
+};
+const CAM_LABELS = {
+  street: 'Street View',
+  chase:  'Chase Cam',
+  orbit:  'Drone 3D',
+  top:    'Map View',
+};
+
 /** Update autopilot button label */
 export function updateAutopilotBtn(on) {
   const btn = document.getElementById('btn-autopilot');
-  btn.textContent = on ? '🎬 Auto ON' : '🎬 Demo';
+  const playIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><polygon points="5 3 19 12 5 21 5 3"/></svg>`;
+  const pauseIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>`;
+  btn.innerHTML = `${on ? pauseIcon : playIcon}<span>${on ? 'Auto ON' : 'Demo'}</span>`;
   btn.classList.toggle('active', on);
 }
 
@@ -63,19 +79,18 @@ export function updateAutopilotBtn(on) {
 export function updateCamBtn(mode) {
   const btn = document.getElementById('btn-cam');
   if (!btn) return;
-  const labels = {
-    street: '👁️ Street View',
-    chase: '🚗 Chase Cam',
-    orbit: '🚁 Drone 3D',
-    top: '🗺️ Map View'
-  };
-  btn.textContent = labels[mode] || '👁️ Street View';
+  const svg = CAM_SVGS[mode] || CAM_SVGS.street;
+  const label = CAM_LABELS[mode] || 'Street View';
+  btn.innerHTML = `${svg}<span>${label}</span>`;
 }
 
 /** Update vehicle button label */
 export function updateVehicleBtn(type) {
   const btn = document.getElementById('btn-vehicle-switch');
-  btn.textContent = type === 'car' ? '🚗 Car' : '🚲 Bike';
+  const carIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><path d="M5 17H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2l2-3h10l2 3h2a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-2"/><circle cx="7.5" cy="17" r="2.5"/><circle cx="16.5" cy="17" r="2.5"/></svg>`;
+  const bikeIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 6a1 1 0 0 0-1-1h-4"/><path d="m5.5 14 4.5-9 3 4 2-4h4"/></svg>`;
+  const label = type === 'car' ? 'Car' : 'Bike';
+  btn.innerHTML = `${type === 'car' ? carIcon : bikeIcon}<span>${label}</span>`;
 }
 
 /** Update challenge timer display */

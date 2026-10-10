@@ -3,35 +3,56 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Roam3D – Land in Paris | TinkerHub Layover 2026</title>
+  <title>Roam3D - Land in Paris | TinkerHub Layover 2026</title>
   <meta name="description" content="Drive real Paris streets in a 3D browser simulator. Visit the Eiffel Tower, Louvre, Notre-Dame and more." />
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚗</text></svg>" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;900&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Source+Serif+4:ital,wght@1,600&display=swap" rel="stylesheet" />
 </head>
 <body>
   <div id="app">
-    <!-- Landing Screen -->
+
+    <!-- ─── Landing Screen ─────────────────────────── -->
     <div id="landing-screen">
-      <div class="landing-bg"></div>
+      <div class="landing-bg">
+        <div class="landing-bg-grid"></div>
+        <div class="landing-bg-glow"></div>
+      </div>
+
+      <!-- Ticker bar (visaguy.ae-style) -->
+      <div class="landing-ticker-wrap">
+        <div class="landing-ticker">
+          <div class="ticker-inner">
+            <span>Paris</span><span>3D Real Streets</span><span>6 Landmarks</span>
+            <span>WASD Drive</span><span>360° Orbit</span><span>Street View</span>
+            <span>Demo Mode</span><span>Eiffel Tower</span><span>Louvre</span>
+            <span>Paris</span><span>3D Real Streets</span><span>6 Landmarks</span>
+            <span>WASD Drive</span><span>360° Orbit</span><span>Street View</span>
+            <span>Demo Mode</span><span>Eiffel Tower</span><span>Louvre</span>
+          </div>
+        </div>
+      </div>
+
       <div class="landing-content">
-        <div class="logo-badge">TinkerHub LAYOVER 2026</div>
-        <h1 class="landing-title">
-          <span class="title-roam">Roam</span><span class="title-3d">3D</span>
-        </h1>
+        <div class="logo-badge">TinkerHub Layover 2026</div>
+
+        <h1 class="landing-title">Roam<em>3D</em></h1>
         <p class="landing-subtitle">Land in Paris</p>
-        <p class="landing-tagline">Genie dreams up imaginary worlds.<br/>We let you <em>drive</em> the real one.</p>
-        
+        <p class="landing-tagline">AI dreams imaginary worlds.<br/>We let you <span class="accent">drive</span> the real one.</p>
+
         <div class="vehicle-choice">
           <button class="vehicle-btn active" id="btn-car" data-vehicle="car">
-            <span class="vehicle-icon">🚗</span>
-            <span>Car</span>
+            <span class="vehicle-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2l2-3h10l2 3h2a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-2"/><circle cx="7.5" cy="17" r="2.5"/><circle cx="16.5" cy="17" r="2.5"/><path d="M3 9h18"/></svg>
+            </span>
+            <span class="vehicle-name">Car</span>
             <span class="vehicle-speed">60 km/h</span>
           </button>
           <button class="vehicle-btn" id="btn-bike" data-vehicle="bike">
-            <span class="vehicle-icon">🚲</span>
-            <span>Bike</span>
+            <span class="vehicle-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 6a1 1 0 0 0-1-1h-4"/><path d="m5.5 14 4.5-9 3 4 2-4h4"/></svg>
+            </span>
+            <span class="vehicle-name">Bike</span>
             <span class="vehicle-speed">25 km/h</span>
           </button>
         </div>
@@ -39,47 +60,53 @@
         <div class="landing-actions">
           <button id="btn-start" class="btn-primary">
             <span>Start Drive</span>
-            <span class="btn-arrow">→</span>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
           </button>
           <button id="btn-autopilot-start" class="btn-secondary">
-            <span>🎬</span>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><polygon points="5 3 19 12 5 21 5 3"/></svg>
             <span>Demo Mode</span>
           </button>
         </div>
 
         <div class="landing-hints">
-          <span>W/↑ Gas</span>
-          <span>S/↓ Brake/Reverse</span>
-          <span>A/D Steer</span>
-          <span>Drag/Middle Click Orbit 360°</span>
-          <span>Scroll Zoom</span>
-          <span>C Camera</span>
-          <span>V Vehicle</span>
+          <span>W/S Gas + Brake</span><span>A/D Steer</span>
+          <span>Drag Orbit</span><span>Scroll Zoom</span>
+          <span>C Camera</span><span>L Landmarks</span>
         </div>
       </div>
     </div>
 
-    <!-- Map Container -->
+    <!-- ─── Map Container ───────────────────────────── -->
     <div id="map"></div>
 
-    <!-- Loading Overlay -->
+    <!-- ─── Loading Overlay ─────────────────────────── -->
     <div id="loading-overlay">
-      <div class="loading-spinner"></div>
-      <div class="loading-text">Loading Paris…</div>
-      <div class="loading-sub">Fetching satellite & 3D tiles</div>
+      <div class="loading-inner">
+        <div class="loading-ring">
+          <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="24" cy="24" r="20" stroke="rgba(255,255,255,0.08)" stroke-width="3"/>
+            <circle cx="24" cy="24" r="20" stroke="white" stroke-width="3"
+              stroke-dasharray="30 100" stroke-linecap="round"
+              class="loading-arc"/>
+          </svg>
+        </div>
+        <div class="loading-text">Loading Paris</div>
+        <div class="loading-sub">Fetching satellite &amp; 3D tiles</div>
+      </div>
     </div>
 
-    <!-- Error Overlay -->
+    <!-- ─── Error Overlay ───────────────────────────── -->
     <div id="error-overlay" style="display:none">
-      <div class="error-icon">⚠️</div>
+      <div class="error-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="40" height="40"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      </div>
       <div class="error-title">Tiles unavailable</div>
       <div class="error-msg">OpenFreeMap tiles could not load. Check your connection and refresh.</div>
-      <button onclick="location.reload()" class="btn-primary">Retry</button>
+      <button id="btn-error-retry" class="btn-primary">Retry</button>
     </div>
 
-    <!-- HUD (shown during driving) -->
+    <!-- ─── HUD (shown during driving) ─────────────── -->
     <div id="hud" style="display:none">
-      <!-- Top bar -->
       <div id="hud-top">
         <div id="hud-speed-block">
           <span id="hud-speed">0</span>
@@ -88,65 +115,102 @@
         <div id="hud-landmark-block">
           <div id="hud-current">Eiffel Tower</div>
           <div id="hud-next-block">
-            <span class="hud-label">Next:</span>
+            <span class="hud-label">Next</span>
             <span id="hud-next">Arc de Triomphe</span>
-            <span id="hud-next-dist">—</span>
+            <span id="hud-next-dist">-</span>
           </div>
         </div>
         <div id="hud-controls-hint">
-          <div>WASD / Arrows Drive & Steer · Drag Orbit 360° · Scroll Zoom</div>
-          <div>WASD auto-realigns camera · C Cam · V Vehicle · L Landmarks · P Demo · T Turbo</div>
+          <div>WASD - Drag Orbit - Scroll Zoom</div>
+          <div>C Cam - V Vehicle - L Landmarks - P Demo - T Turbo</div>
         </div>
       </div>
 
-      <!-- Progress bar -->
       <div id="hud-progress-bar">
         <div id="hud-progress-fill"></div>
         <div id="hud-progress-landmarks"></div>
       </div>
 
-      <!-- Bottom landmark card -->
       <div id="landmark-card" style="display:none">
         <div class="card-header">
-          <span id="card-icon">🗼</span>
-          <div>
+          <div class="card-icon-wrap" id="card-icon"></div>
+          <div class="card-meta">
             <div id="card-name">Eiffel Tower</div>
             <div id="card-count">1 / 6 visited</div>
           </div>
         </div>
-        <div id="card-desc">Built for the 1889 World's Fair, about 330 m tall including antennas.</div>
-        <button id="card-close">✕</button>
+        <div id="card-desc">Built for the 1889 World's Fair.</div>
+        <button id="card-close" aria-label="Close">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
       </div>
 
-      <!-- Controls row -->
       <div id="hud-bottom-controls">
-        <button id="btn-steer-left" class="btn-pedal" title="Steer Left (or press A / Left)">◀</button>
-        <button id="btn-gas" class="btn-pedal" title="Hold to accelerate forward (or press W / Up)">⚡ Gas</button>
-        <button id="btn-brake" class="btn-pedal" title="Hold to brake / reverse (or press S / Down)">🛑 Brake</button>
-        <button id="btn-steer-right" class="btn-pedal" title="Steer Right (or press D / Right)">▶</button>
-        <button id="btn-cam" title="Switch camera view (or press C)">👁️ Street View</button>
-        <button id="btn-satellite" class="active" title="Toggle satellite ground imagery">🛰️ Satellite</button>
-        <button id="btn-landmarks" class="active" title="Toggle landmarks on/off (or press L)">🏛️ Landmarks</button>
-        <button id="btn-autopilot" title="Toggle autonomous tour cruise (or press P)">🎬 Demo</button>
-        <button id="btn-vehicle-switch" title="Switch vehicle (or press V)">🚗 Car</button>
-        <button id="btn-speech" title="Toggle audio tour guide">🔊 Voice</button>
-        <button id="btn-challenge" title="Layover 10-minute Challenge">⏱ Challenge</button>
+        <button id="btn-steer-left" class="btn-pedal btn-steer" title="Steer Left (A)">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <button id="btn-gas" class="btn-pedal btn-gas" title="Gas (W)">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          <span>Gas</span>
+        </button>
+        <button id="btn-brake" class="btn-pedal btn-brake" title="Brake (S)">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+          <span>Brake</span>
+        </button>
+        <button id="btn-steer-right" class="btn-pedal btn-steer" title="Steer Right (D)">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+
+        <div class="hud-divider"></div>
+
+        <button id="btn-cam" title="Switch Camera (C)">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          <span>Street View</span>
+        </button>
+        <button id="btn-satellite" class="active" title="Toggle Satellite">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          <span>Satellite</span>
+        </button>
+        <button id="btn-landmarks" class="active" title="Toggle Landmarks (L)">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          <span>Landmarks</span>
+        </button>
+        <button id="btn-autopilot" title="Demo Mode (P)">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          <span>Demo</span>
+        </button>
+        <button id="btn-vehicle-switch" title="Switch Vehicle (V)">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><path d="M5 17H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2l2-3h10l2 3h2a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-2"/><circle cx="7.5" cy="17" r="2.5"/><circle cx="16.5" cy="17" r="2.5"/></svg>
+          <span>Car</span>
+        </button>
+        <button id="btn-speech" title="Toggle Audio Guide">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+          <span>Voice</span>
+        </button>
+        <button id="btn-challenge" title="10-min Challenge">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <span>Challenge</span>
+        </button>
       </div>
 
-      <!-- Challenge timer -->
       <div id="challenge-timer" style="display:none">
-        <span>⏱</span>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
         <span id="challenge-time">10:00</span>
       </div>
     </div>
 
-    <!-- Finish Screen -->
+    <!-- ─── Finish Screen ───────────────────────────── -->
     <div id="finish-screen" style="display:none">
       <div class="finish-content">
-        <div class="finish-icon">🏆</div>
-        <h2>Paris Complete!</h2>
+        <div class="finish-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" width="52" height="52"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/></svg>
+        </div>
+        <h2>Paris Complete</h2>
         <div id="finish-stats"></div>
-        <button id="btn-restart" class="btn-primary">Drive Again</button>
+        <button id="btn-restart" class="btn-primary">
+          <span>Drive Again</span>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+        </button>
       </div>
     </div>
   </div>

@@ -37,7 +37,9 @@ export class LandmarkManager {
     LANDMARKS.forEach((lm, i) => {
       const el = document.createElement('div');
       el.className = 'landmark-marker';
-      el.innerHTML = `<span class="marker-icon">${lm.icon}</span><span class="marker-label">${lm.name}</span>`;
+      // SVG pin marker (no emoji)
+      const pinSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>`;
+      el.innerHTML = `<div class="marker-pin">${pinSvg}</div><span class="marker-label">${lm.name}</span>`;
       el.dataset.id = lm.id;
       el.dataset.index = i;
 
@@ -104,7 +106,9 @@ export class LandmarkManager {
     const card = document.getElementById('landmark-card');
     if (!card) return;
 
-    document.getElementById('card-icon').textContent = lm.icon;
+    // SVG pin icon for the card (monochromatic)
+    const iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>`;
+    document.getElementById('card-icon').innerHTML = iconSvg;
     document.getElementById('card-name').textContent = lm.name;
     document.getElementById('card-count').textContent = `${this.visited.size} / 6 visited`;
     document.getElementById('card-desc').textContent = lm.desc;
