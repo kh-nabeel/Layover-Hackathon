@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Roam3D – Land in Paris | TinkerHub Layover 2026</title>
+  <meta name="description" content="Drive real Paris streets in a 3D browser simulator. Visit the Eiffel Tower, Louvre, Notre-Dame and more." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚗</text></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;900&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <div id="app">
+    <!-- Landing Screen -->
+    <div id="landing-screen">
+      <div class="landing-bg"></div>
+      <div class="landing-content">
+        <div class="logo-badge">TinkerHub LAYOVER 2026</div>
+        <h1 class="landing-title">
+          <span class="title-roam">Roam</span><span class="title-3d">3D</span>
+        </h1>
+        <p class="landing-subtitle">Land in Paris</p>
+        <p class="landing-tagline">Genie dreams up imaginary worlds.<br/>We let you <em>drive</em> the real one.</p>
+        
+        <div class="vehicle-choice">
+          <button class="vehicle-btn active" id="btn-car" data-vehicle="car">
+            <span class="vehicle-icon">🚗</span>
+            <span>Car</span>
+            <span class="vehicle-speed">60 km/h</span>
+          </button>
+          <button class="vehicle-btn" id="btn-bike" data-vehicle="bike">
+            <span class="vehicle-icon">🚲</span>
+            <span>Bike</span>
+            <span class="vehicle-speed">25 km/h</span>
+          </button>
+        </div>
+
+        <div class="landing-actions">
+          <button id="btn-start" class="btn-primary">
+            <span>Start Drive</span>
+            <span class="btn-arrow">→</span>
+          </button>
+          <button id="btn-autopilot-start" class="btn-secondary">
+            <span>🎬</span>
+            <span>Demo Mode</span>
+          </button>
+        </div>
+
+        <div class="landing-hints">
+          <span>W/↑ Accelerate</span>
+          <span>S/↓ Brake</span>
+          <span>Space Pause</span>
+          <span>T Turbo</span>
+          <span>C Camera</span>
+          <span>V Switch Vehicle</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Map Container -->
+    <div id="map"></div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay">
+      <div class="loading-spinner"></div>
+      <div class="loading-text">Loading Paris…</div>
+      <div class="loading-sub">Fetching tiles from OpenStreetMap</div>
+    </div>
+
+    <!-- Error Overlay -->
+    <div id="error-overlay" style="display:none">
+      <div class="error-icon">⚠️</div>
+      <div class="error-title">Tiles unavailable</div>
+      <div class="error-msg">OpenFreeMap tiles could not load. Check your connection and refresh.</div>
+      <button onclick="location.reload()" class="btn-primary">Retry</button>
+    </div>
+
+    <!-- HUD (shown during driving) -->
+    <div id="hud" style="display:none">
+      <!-- Top bar -->
+      <div id="hud-top">
+        <div id="hud-speed-block">
+          <span id="hud-speed">0</span>
+          <span class="hud-unit">km/h</span>
+        </div>
+        <div id="hud-landmark-block">
+          <div id="hud-current">Eiffel Tower</div>
+          <div id="hud-next-block">
+            <span class="hud-label">Next:</span>
+            <span id="hud-next">Arc de Triomphe</span>
+            <span id="hud-next-dist">—</span>
+          </div>
+        </div>
+        <div id="hud-controls-hint">
+          <div>W/↑ Gas · S/↓ Brake · Space Pause</div>
+          <div>T Turbo · C Cam · V Vehicle · A Autopilot</div>
+        </div>
+      </div>
+
+      <!-- Progress bar -->
+      <div id="hud-progress-bar">
+        <div id="hud-progress-fill"></div>
+        <div id="hud-progress-landmarks"></div>
+      </div>
+
+      <!-- Bottom landmark card -->
+      <div id="landmark-card" style="display:none">
+        <div class="card-header">
+          <span id="card-icon">🗼</span>
+          <div>
+            <div id="card-name">Eiffel Tower</div>
+            <div id="card-count">1 / 6 visited</div>
+          </div>
+        </div>
+        <div id="card-desc">Built for the 1889 World's Fair, about 330 m tall including antennas.</div>
+        <button id="card-close">✕</button>
+      </div>
+
+      <!-- Controls row -->
+      <div id="hud-bottom-controls">
+        <button id="btn-gas" class="btn-pedal" title="Hold to accelerate (or press W / Up)">⚡ Gas</button>
+        <button id="btn-brake" class="btn-pedal" title="Hold to brake (or press S / Down)">🛑 Brake</button>
+        <button id="btn-autopilot" title="Toggle autonomous cruise (or press A)">🎬 Demo</button>
+        <button id="btn-cam" title="Switch camera view (or press C)">👁️ Street View</button>
+        <button id="btn-vehicle-switch" title="Switch vehicle (or press V)">🚗 Car</button>
+        <button id="btn-speech" title="Toggle audio tour guide">🔊 Voice</button>
+        <button id="btn-challenge" title="Layover 10-minute Challenge">⏱ Challenge</button>
+      </div>
+
+      <!-- Challenge timer -->
+      <div id="challenge-timer" style="display:none">
+        <span>⏱</span>
+        <span id="challenge-time">10:00</span>
+      </div>
+    </div>
+
+    <!-- Finish Screen -->
+    <div id="finish-screen" style="display:none">
+      <div class="finish-content">
+        <div class="finish-icon">🏆</div>
+        <h2>Paris Complete!</h2>
+        <div id="finish-stats"></div>
+        <button id="btn-restart" class="btn-primary">Drive Again</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

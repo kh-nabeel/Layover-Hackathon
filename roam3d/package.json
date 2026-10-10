@@ -1,0 +1,22 @@
+{
+  "name": "roam3d",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "fetch-routes": "node scripts/fetch-routes.mjs"
+  },
+  "devDependencies": {
+    "vite": "^8.3.0"
+  },
+  "dependencies": {
+    "@turf/along": "^7.4.0",
+    "@turf/length": "^7.4.0",
+    "@turf/nearest-point-on-line": "^7.4.0",
+    "maplibre-gl": "^6.13.0",
+    "three": "^0.186.1"
+  }
+}
