@@ -18,6 +18,13 @@ import {
   updateAutopilotBtn, updateCamBtn, updateVehicleBtn, updateChallengeTimer
 } from './hud.js';
 import { initLanding, showHUD, showFinish } from './landing.js';
+import {
+  createHaussmannFacadeTexture,
+  createRooftopTexture,
+  createRoadAsphaltTexture,
+  createZebraCrossingTexture,
+  createPavementTexture
+} from './textures.js';
 
 // Vite worker setup (required by OpenFreeMap quick-start docs)
 setWorkerUrl(workerUrl);
@@ -94,22 +101,143 @@ async function onMapLoaded() {
   });
 }
 
-// ─── 3D Buildings & Environment Setup ──────────────────────────────────────
+// ─── 3D Buildings, Textures & Satellite Environment Setup ──────────────────
 function setup3DBuildings() {
+  // 1. Register high-resolution procedural textures
+  try {
+    if (!map.hasImage('facade-haussmann')) {
+      map.addImage('facade-haussmann', createHaussmannFacadeTexture());
+    }
+    if (!map.hasImage('roof-ac-units')) {
+      map.addImage('roof-ac-units', createRooftopTexture());
+    }
+    if (!map.hasImage('road-asphalt')) {
+      map.addImage('road-asphalt', createRoadAsphaltTexture());
+    }
+    if (!map.hasImage('crosswalk-zebra')) {
+      map.addImage('crosswalk-zebra', createZebraCrossingTexture());
+    }
+    if (!map.hasImage('pavement-stone')) {
+      map.addImage('pavement-stone', createPavementTexture());
+    }
+  } catch (err) {
+    console.warn('Texture registration notice:', err);
+  }
+
+  // 2. High-Resolution Satellite Ground Layer (ESRI World Imagery)
+  try {
+    if (!map.getSource('satellite-imagery')) {
+      map.addSource('satellite-imagery', {
+        type: 'raster',
+        tiles: [
+          'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        ],
+        tileSize: 256,
+        maxzoom: 19,
+      });
+    }
+
+    const layers = map.getStyle().layers;
+    const firstRoad = layers.find(
+      l => l['source-layer'] === 'transportation' || l.id.includes('road') || l.id.includes('tunnel')
+    );
+    const roadBeforeId = firstRoad ? firstRoad.id : undefined;
+
+    if (!map.getLayer('satellite-base')) {
+      map.addLayer({
+        id: 'satellite-base',
+        type: 'raster',
+        source: 'satellite-imagery',
+        paint: {
+          'raster-opacity': 0.88,
+          'raster-saturation': 0.15,
+          'raster-contrast': 0.1,
+        },
+      }, roadBeforeId);
+    }
+  } catch (e) {
+    console.warn('Satellite layer notice:', e);
+  }
+
+  // 3. High-Resolution Road Surface, Center Lane Stripes, and Sidewalk Overlays
+  try {
+    if (!map.getLayer('roam3d-roads-hd')) {
+      map.addLayer({
+        id: 'roam3d-roads-hd',
+        type: 'line',
+        source: 'openmaptiles',
+        'source-layer': 'transportation',
+        filter: ['!=', 'class', 'rail'],
+        layout: { 'line-join': 'round', 'line-cap': 'round' },
+        paint: {
+          'line-color': '#1e2229',
+          'line-width': [
+            'interpolate', ['exponential', 1.5], ['zoom'],
+            13, 3,
+            15, 8,
+            17, 18,
+            19, 36,
+          ],
+          'line-opacity': 0.94,
+        },
+      });
+    }
+
+    // White dashed center lane lines on main roads
+    if (!map.getLayer('roam3d-roads-lanes')) {
+      map.addLayer({
+        id: 'roam3d-roads-lanes',
+        type: 'line',
+        source: 'openmaptiles',
+        'source-layer': 'transportation',
+        filter: ['in', 'class', 'primary', 'secondary', 'trunk', 'motorway', 'main'],
+        paint: {
+          'line-color': '#ffffff',
+          'line-width': [
+            'interpolate', ['linear'], ['zoom'],
+            16, 1.2,
+            18, 2.5,
+            20, 4.0,
+          ],
+          'line-dasharray': [2, 3],
+          'line-opacity': 0.88,
+        },
+      });
+    }
+
+    // Parisian sidewalk pavements
+    if (!map.getLayer('roam3d-pavements')) {
+      map.addLayer({
+        id: 'roam3d-pavements',
+        type: 'line',
+        source: 'openmaptiles',
+        'source-layer': 'transportation',
+        filter: ['in', 'class', 'path', 'pedestrian', 'footway'],
+        paint: {
+          'line-color': '#d5cbbd',
+          'line-width': [
+            'interpolate', ['linear'], ['zoom'],
+            15, 2,
+            18, 6,
+            20, 12,
+          ],
+          'line-opacity': 0.85,
+        },
+      });
+    }
+  } catch (e) {
+    console.warn('Road overlays notice:', e);
+  }
+
+  // 4. 3D Textured Buildings with Window/Facade Texture & Rooftop Details
   const layers = map.getStyle().layers;
   const existingExtrusionLayer = layers.find(
     l => l.type === 'fill-extrusion' && (l['source-layer'] === 'building' || l.id.includes('building'))
   );
 
   if (existingExtrusionLayer) {
-    // Tune existing layer for grand Parisian Haussmann limestone aesthetic
-    map.setPaintProperty(existingExtrusionLayer.id, 'fill-extrusion-color', [
-      'interpolate', ['linear'], ['zoom'],
-      14, '#d8cbba',
-      16, '#eae0d2',
-      18, '#f7f2ea',
-    ]);
-    map.setPaintProperty(existingExtrusionLayer.id, 'fill-extrusion-opacity', 0.95);
+    map.setPaintProperty(existingExtrusionLayer.id, 'fill-extrusion-pattern', 'facade-haussmann');
+    map.setPaintProperty(existingExtrusionLayer.id, 'fill-extrusion-opacity', 0.96);
     map.setPaintProperty(existingExtrusionLayer.id, 'fill-extrusion-height', [
       'interpolate', ['linear'], ['zoom'],
       13.5, 0,
@@ -124,7 +252,6 @@ function setup3DBuildings() {
       map.setPaintProperty(existingExtrusionLayer.id, 'fill-extrusion-vertical-gradient', true);
     } catch (e) {}
   } else {
-    // Add new 3D Haussmann apartment facades
     const labelLayer = layers.find(l => l.type === 'symbol');
     const beforeId = labelLayer ? labelLayer.id : undefined;
 
@@ -135,12 +262,7 @@ function setup3DBuildings() {
       'source-layer': 'building',
       minzoom: 13.5,
       paint: {
-        'fill-extrusion-color': [
-          'interpolate', ['linear'], ['zoom'],
-          14, '#d8cbba',
-          16, '#eae0d2',
-          18, '#f7f2ea',
-        ],
+        'fill-extrusion-pattern': 'facade-haussmann',
         'fill-extrusion-height': [
           'interpolate', ['linear'], ['zoom'],
           13.5, 0,
@@ -151,13 +273,13 @@ function setup3DBuildings() {
           13.5, 0,
           14.5, ['coalesce', ['get', 'render_min_height'], ['get', 'min_height'], 0],
         ],
-        'fill-extrusion-opacity': 0.95,
+        'fill-extrusion-opacity': 0.96,
         'fill-extrusion-vertical-gradient': true,
       },
     }, beforeId);
   }
 
-  // Realistic daylight Paris sky & atmospheric horizon for Street View
+  // 5. Realistic daylight Paris sky & atmospheric horizon for Street View
   try {
     if (typeof map.setSky === 'function') {
       map.setSky({
@@ -165,6 +287,20 @@ function setup3DBuildings() {
         'horizon-color': '#dceaf7',
         'fog-color': '#cfdfee',
         'atmosphere-blend': 0.85,
+      });
+    }
+  } catch (e) {}
+
+  // 6. Atmospheric fog for immersive street-level depth
+  try {
+    if (typeof map.setFog === 'function') {
+      map.setFog({
+        'range': [0.5, 12],
+        'color': '#dce5ef',
+        'horizon-blend': 0.08,
+        'high-color': '#a5c8e8',
+        'space-color': '#c7ddf0',
+        'star-intensity': 0,
       });
     }
   } catch (e) {}
@@ -281,7 +417,8 @@ function startGame(vehicleType, autopilotMode) {
   });
   document.getElementById('btn-challenge').addEventListener('click', toggleChallenge);
 
-  // V key: switch vehicle
+  // Shortcut keys (V = vehicle, C = camera, P = autopilot)
+  // NOTE: A/D are reserved for WASD steering — do NOT bind autopilot to A!
   window.addEventListener('keydown', (e) => {
     if (!gameRunning) return;
     if (e.code === 'KeyV') {
@@ -293,7 +430,7 @@ function startGame(vehicleType, autopilotMode) {
       const mode = camera.nextMode();
       updateCamBtn(mode);
     }
-    if (e.code === 'KeyA') {
+    if (e.code === 'KeyP') {
       driving.autopilot = !driving.autopilot;
       updateAutopilotBtn(driving.autopilot);
     }
@@ -307,6 +444,10 @@ function startGame(vehicleType, autopilotMode) {
   // Wire on-screen gas and brake pedals (for touch/click driving)
   const btnGas = document.getElementById('btn-gas');
   const btnBrake = document.getElementById('btn-brake');
+  const btnSteerLeft = document.getElementById('btn-steer-left');
+  const btnSteerRight = document.getElementById('btn-steer-right');
+  const btnSat = document.getElementById('btn-satellite');
+
   if (btnGas) {
     btnGas.addEventListener('mousedown', () => driving.setForward(true));
     btnGas.addEventListener('mouseup', () => driving.setForward(false));
@@ -320,6 +461,32 @@ function startGame(vehicleType, autopilotMode) {
     btnBrake.addEventListener('mouseleave', () => driving.setBack(false));
     btnBrake.addEventListener('touchstart', (e) => { e.preventDefault(); driving.setBack(true); });
     btnBrake.addEventListener('touchend', (e) => { e.preventDefault(); driving.setBack(false); });
+  }
+  if (btnSteerLeft) {
+    btnSteerLeft.addEventListener('mousedown', () => driving.setLeft(true));
+    btnSteerLeft.addEventListener('mouseup', () => driving.setLeft(false));
+    btnSteerLeft.addEventListener('mouseleave', () => driving.setLeft(false));
+    btnSteerLeft.addEventListener('touchstart', (e) => { e.preventDefault(); driving.setLeft(true); });
+    btnSteerLeft.addEventListener('touchend', (e) => { e.preventDefault(); driving.setLeft(false); });
+  }
+  if (btnSteerRight) {
+    btnSteerRight.addEventListener('mousedown', () => driving.setRight(true));
+    btnSteerRight.addEventListener('mouseup', () => driving.setRight(false));
+    btnSteerRight.addEventListener('mouseleave', () => driving.setRight(false));
+    btnSteerRight.addEventListener('touchstart', (e) => { e.preventDefault(); driving.setRight(true); });
+    btnSteerRight.addEventListener('touchend', (e) => { e.preventDefault(); driving.setRight(false); });
+  }
+
+  let satActive = true;
+  if (btnSat) {
+    btnSat.addEventListener('click', () => {
+      satActive = !satActive;
+      if (map.getLayer('satellite-base')) {
+        map.setPaintProperty('satellite-base', 'raster-opacity', satActive ? 0.88 : 0);
+      }
+      btnSat.classList.toggle('active', satActive);
+      btnSat.textContent = satActive ? '🛰️ Satellite' : '🗺️ Map';
+    });
   }
 
   // Tab visibility: pause when hidden, resume when visible
@@ -337,11 +504,12 @@ function startGame(vehicleType, autopilotMode) {
     if (!document.hidden) {
       const result = driving.tick(dt);
       if (result) {
-        // Update vehicle layer position
+        // Update vehicle layer position and front wheel steering
         vehicleLayer.setPosition(result.lngLat, result.bearing);
+        vehicleLayer.setSteering(result.steeringAngle);
 
-        // Update camera
-        camera.update(result.lngLat, result.bearing, dt);
+        // Update camera (with auto-realignment when user drives with WASD!)
+        camera.update(result.lngLat, result.bearing, dt, result.isUserDriving, result.speedKmh);
 
         // Check landmarks
         landmarks.check(result.lngLat);

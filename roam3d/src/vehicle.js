@@ -132,26 +132,45 @@ export function buildCar(color = 0x0284c7) {
     group.add(mirror);
   });
 
-  // 9. Wheels & Rims (4 wheels)
+  // 9. Wheels & Rims with Steering Pivots
   const wheelGeo = new THREE.CylinderGeometry(0.33, 0.33, 0.22, 16);
   const rimGeo = new THREE.CylinderGeometry(0.2, 0.2, 0.24, 8);
-  const wheelPos = [
-    [-0.92, 0.33, 1.35],
-    [0.92, 0.33, 1.35],
-    [-0.92, 0.33, -1.35],
-    [0.92, 0.33, -1.35],
-  ];
-  wheelPos.forEach(([x, y, z]) => {
+  const frontSteerGroups = [];
+
+  // Front wheels (pivot when steering with A/D)
+  [-0.92, 0.92].forEach(x => {
+    const steerPivot = new THREE.Group();
+    steerPivot.position.set(x, 0.33, 1.35);
+
     const tire = new THREE.Mesh(wheelGeo, tireMat);
     tire.rotation.z = Math.PI / 2;
-    tire.position.set(x, y, z);
+    steerPivot.add(tire);
+
+    const rim = new THREE.Mesh(rimGeo, rimMat);
+    rim.rotation.z = Math.PI / 2;
+    steerPivot.add(rim);
+
+    group.add(steerPivot);
+    frontSteerGroups.push(steerPivot);
+  });
+
+  // Rear wheels
+  [-0.92, 0.92].forEach(x => {
+    const tire = new THREE.Mesh(wheelGeo, tireMat);
+    tire.rotation.z = Math.PI / 2;
+    tire.position.set(x, 0.33, -1.35);
     group.add(tire);
 
     const rim = new THREE.Mesh(rimGeo, rimMat);
     rim.rotation.z = Math.PI / 2;
-    rim.position.set(x, y, z);
+    rim.position.set(x, 0.33, -1.35);
     group.add(rim);
   });
+
+  group.userData.setSteering = (steerDeg) => {
+    const rad = (steerDeg * Math.PI) / 180;
+    frontSteerGroups.forEach(g => { g.rotation.y = rad; });
+  };
 
   // 10. Front Headlights (Bright LED)
   const headGeo = new THREE.BoxGeometry(0.32, 0.14, 0.08);

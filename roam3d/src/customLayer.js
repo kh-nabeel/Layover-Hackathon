@@ -26,8 +26,8 @@ export class VehicleLayer {
     this._mercPos = null;
     // Current bearing in degrees
     this._bearing = 0;
-    // Altitude offset (metres)
-    this._altOffset = 0;
+    // Altitude offset (metres) – lifts vehicle so wheels sit on road surface
+    this._altOffset = 1.2;
   }
 
   /** Called once by MapLibre when the layer is added */
@@ -49,6 +49,9 @@ export class VehicleLayer {
     const fill = new THREE.DirectionalLight(0x90caf9, 0.9);
     fill.position.set(-20, 30, -30);
     this.scene.add(fill);
+
+    // Add subtle fog to match MapLibre atmosphere
+    this.scene.fog = new THREE.Fog(0xdce5ef, 200, 1200);
 
     // Build initial vehicle mesh
     this._buildVehicle(this._vehicleType);
@@ -97,6 +100,12 @@ export class VehicleLayer {
       this._altOffset
     );
     this._bearing = bearing;
+  }
+
+  setSteering(angleDeg) {
+    if (this._vehicleGroup?.userData?.setSteering) {
+      this._vehicleGroup.userData.setSteering(angleDeg);
+    }
   }
 
   /**

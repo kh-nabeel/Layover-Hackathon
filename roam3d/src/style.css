@@ -377,6 +377,27 @@ html, body {
   background: rgba(239, 68, 68, 0.55);
   transform: scale(0.95);
 }
+#hud-bottom-controls #btn-steer-left,
+#hud-bottom-controls #btn-steer-right {
+  background: rgba(14, 165, 233, 0.22);
+  border-color: rgba(14, 165, 233, 0.6);
+  color: #38bdf8;
+  padding: 8px 14px;
+}
+#hud-bottom-controls #btn-steer-left:hover,
+#hud-bottom-controls #btn-steer-right:hover {
+  background: rgba(14, 165, 233, 0.38);
+}
+#hud-bottom-controls #btn-steer-left:active,
+#hud-bottom-controls #btn-steer-right:active {
+  background: rgba(14, 165, 233, 0.6);
+  transform: scale(0.92);
+}
+#hud-bottom-controls #btn-satellite.active {
+  background: rgba(168, 85, 247, 0.28);
+  border-color: #a855f7;
+  color: #d8b4fe;
+}
 
 /* Challenge timer */
 #challenge-timer {

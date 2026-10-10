@@ -48,12 +48,13 @@
         </div>
 
         <div class="landing-hints">
-          <span>W/↑ Accelerate</span>
-          <span>S/↓ Brake</span>
-          <span>Space Pause</span>
-          <span>T Turbo</span>
+          <span>W/↑ Gas</span>
+          <span>S/↓ Brake/Reverse</span>
+          <span>A/D Steer</span>
+          <span>Drag/Middle Click Orbit 360°</span>
+          <span>Scroll Zoom</span>
           <span>C Camera</span>
-          <span>V Switch Vehicle</span>
+          <span>V Vehicle</span>
         </div>
       </div>
     </div>
@@ -65,7 +66,7 @@
     <div id="loading-overlay">
       <div class="loading-spinner"></div>
       <div class="loading-text">Loading Paris…</div>
-      <div class="loading-sub">Fetching tiles from OpenStreetMap</div>
+      <div class="loading-sub">Fetching satellite & 3D tiles</div>
     </div>
 
     <!-- Error Overlay -->
@@ -93,8 +94,8 @@
           </div>
         </div>
         <div id="hud-controls-hint">
-          <div>W/↑ Gas · S/↓ Brake · Space Pause</div>
-          <div>T Turbo · C Cam · V Vehicle · A Autopilot</div>
+          <div>WASD / Arrows Drive & Steer · Drag Orbit 360° · Scroll Zoom</div>
+          <div>WASD auto-realigns camera · C Cam · V Vehicle · P Demo · T Turbo</div>
         </div>
       </div>
 
@@ -119,10 +120,13 @@
 
       <!-- Controls row -->
       <div id="hud-bottom-controls">
-        <button id="btn-gas" class="btn-pedal" title="Hold to accelerate (or press W / Up)">⚡ Gas</button>
-        <button id="btn-brake" class="btn-pedal" title="Hold to brake (or press S / Down)">🛑 Brake</button>
-        <button id="btn-autopilot" title="Toggle autonomous cruise (or press A)">🎬 Demo</button>
+        <button id="btn-steer-left" class="btn-pedal" title="Steer Left (or press A / Left)">◀</button>
+        <button id="btn-gas" class="btn-pedal" title="Hold to accelerate forward (or press W / Up)">⚡ Gas</button>
+        <button id="btn-brake" class="btn-pedal" title="Hold to brake / reverse (or press S / Down)">🛑 Brake</button>
+        <button id="btn-steer-right" class="btn-pedal" title="Steer Right (or press D / Right)">▶</button>
         <button id="btn-cam" title="Switch camera view (or press C)">👁️ Street View</button>
+        <button id="btn-satellite" class="active" title="Toggle satellite ground imagery">🛰️ Satellite</button>
+        <button id="btn-autopilot" title="Toggle autonomous tour cruise (or press A)">🎬 Demo</button>
         <button id="btn-vehicle-switch" title="Switch vehicle (or press V)">🚗 Car</button>
         <button id="btn-speech" title="Toggle audio tour guide">🔊 Voice</button>
         <button id="btn-challenge" title="Layover 10-minute Challenge">⏱ Challenge</button>
