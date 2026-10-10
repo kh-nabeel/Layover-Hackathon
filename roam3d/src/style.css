@@ -398,6 +398,11 @@ html, body {
   border-color: #a855f7;
   color: #d8b4fe;
 }
+#hud-bottom-controls #btn-landmarks.active {
+  background: rgba(245, 158, 11, 0.28);
+  border-color: #f59e0b;
+  color: #fbbf24;
+}
 
 /* Challenge timer */
 #challenge-timer {

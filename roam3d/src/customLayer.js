@@ -26,8 +26,8 @@ export class VehicleLayer {
     this._mercPos = null;
     // Current bearing in degrees
     this._bearing = 0;
-    // Altitude offset (metres) – 0.02m (2cm) so wheels sit firmly on road surface without z-fighting
-    this._altOffset = 0.02;
+    // Altitude offset (metres) – 0.15m so wheels sit cleanly above road plane without clipping
+    this._altOffset = 0.15;
   }
 
   /** Called once by MapLibre when the layer is added */

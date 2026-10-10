@@ -179,6 +179,212 @@ export function createHaussmannFacadeTexture() {
 }
 
 /**
+ * Creates full-glass style building windows with dark blue tint (256x256).
+ * Common in modern commercial city centers, business districts, and urban offices.
+ * Features:
+ * - Deep navy/sapphire dark blue tinted reflective architectural glass
+ * - Subtle sky reflection sheen and realistic panel gradient
+ * - Thin dark anodized aluminum vertical and horizontal structural mullions
+ * - Floor spandrel division bands every 3.2 meters
+ * - Realistic interior soft glow on selected office windows
+ */
+export function createDarkBlueGlassFacadeTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 256;
+  const ctx = canvas.getContext('2d');
+
+  // 1. Base dark blue curtain-wall glass
+  const baseGrad = ctx.createLinearGradient(0, 0, 256, 256);
+  baseGrad.addColorStop(0, '#0d1f35'); // Deep midnight navy
+  baseGrad.addColorStop(0.3, '#132d4b');
+  baseGrad.addColorStop(0.6, '#183c64'); // Sapphire blue reflection
+  baseGrad.addColorStop(1, '#0b192c');
+  ctx.fillStyle = baseGrad;
+  ctx.fillRect(0, 0, 256, 256);
+
+  // 2. Floor spandrel beams (structural divisions between floors at y=0, 128, 256)
+  [0, 128, 254].forEach(y => {
+    // Spandrel dark composite band
+    ctx.fillStyle = '#08111d';
+    ctx.fillRect(0, y, 256, 8);
+    // Dark metallic horizontal accent
+    ctx.fillStyle = '#1e3852';
+    ctx.fillRect(0, y + 2, 256, 2);
+  });
+
+  // 3. Grid of full-glass window panels (4 columns x 4 rows per module)
+  // Each panel: 60px wide (~1.5m) x 56px tall (~1.4m)
+  const cols = [4, 68, 132, 196];
+  const rows = [10, 68, 138, 196];
+
+  rows.forEach((ry, rIdx) => {
+    cols.forEach((cx, cIdx) => {
+      const pw = 58;
+      const ph = 54;
+
+      // Dark blue tinted glass pane with diagonal daylight reflection
+      const pGrad = ctx.createLinearGradient(cx, ry, cx + pw, ry + ph);
+      pGrad.addColorStop(0, '#112c4d'); // Tinted glass
+      pGrad.addColorStop(0.35, '#1e4875'); // Blue sky tint
+      pGrad.addColorStop(0.55, '#356e9e'); // Sun reflection sheen
+      pGrad.addColorStop(0.75, '#1b3f68');
+      pGrad.addColorStop(1, '#0e243f'); // Deep tint shadow
+
+      ctx.fillStyle = pGrad;
+      ctx.fillRect(cx, ry, pw, ph);
+
+      // Office interior light hint on occasional windows (working city vibe)
+      if ((rIdx + cIdx * 2) % 5 === 0) {
+        ctx.fillStyle = 'rgba(254, 240, 138, 0.14)';
+        ctx.fillRect(cx + 8, ry + 12, pw - 16, ph - 24);
+        // Blinds / louvers silhouette
+        ctx.fillStyle = 'rgba(10, 25, 45, 0.4)';
+        for (let ly = ry + 14; ly < ry + ph - 14; ly += 5) {
+          ctx.fillRect(cx + 8, ly, pw - 16, 1.5);
+        }
+      }
+
+      // Glass bevel / perimeter edge silicone seal
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(cx + 0.5, ry + 0.5, pw - 1, ph - 1);
+    });
+  });
+
+  // 4. Heavy structural vertical mullions (dark graphite steel)
+  [0, 64, 128, 192, 254].forEach(x => {
+    ctx.fillStyle = '#060d15';
+    ctx.fillRect(x, 0, 4, 256);
+    ctx.fillStyle = '#223c56'; // subtle edge highlight
+    ctx.fillRect(x + 1, 0, 1, 256);
+  });
+
+  return ctx.getImageData(0, 0, 256, 256);
+}
+
+/**
+ * Creates modern city mixed facade with dark stone & reflective blue glass (256x256).
+ */
+export function createCityModernFacadeTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 256;
+  const ctx = canvas.getContext('2d');
+
+  // Dark architectural granite base
+  ctx.fillStyle = '#1c222b';
+  ctx.fillRect(0, 0, 256, 256);
+
+  // Ashlar granite piers
+  [0, 85, 170, 254].forEach(x => {
+    ctx.fillStyle = '#262f3c';
+    ctx.fillRect(x, 0, 12, 256);
+    ctx.fillStyle = '#3a475a';
+    ctx.fillRect(x + 1, 0, 2, 256);
+  });
+
+  // Floor horizontal slabs
+  [0, 128, 254].forEach(y => {
+    ctx.fillStyle = '#181e26';
+    ctx.fillRect(0, y, 256, 10);
+    ctx.fillStyle = '#323e4e';
+    ctx.fillRect(0, y + 2, 256, 2);
+  });
+
+  // Large floor-to-ceiling blue tinted windows
+  const windowBays = [14, 99, 184];
+  const windowFloors = [12, 140];
+
+  windowFloors.forEach(wy => {
+    windowBays.forEach(wx => {
+      const ww = 69;
+      const wh = 114;
+
+      // Dark blue glass
+      const g = ctx.createLinearGradient(wx, wy, wx + ww, wy + wh);
+      g.addColorStop(0, '#102742');
+      g.addColorStop(0.4, '#1b436e');
+      g.addColorStop(0.6, '#285d94');
+      g.addColorStop(1, '#0d1e34');
+      ctx.fillStyle = g;
+      ctx.fillRect(wx, wy, ww, wh);
+
+      // Subtle horizontal window louvers
+      ctx.fillStyle = '#0a1420';
+      ctx.fillRect(wx, wy + wh * 0.45, ww, 2);
+      ctx.fillRect(wx, wy + wh * 0.8, ww, 2);
+      ctx.fillRect(wx + ww / 2, wy, 2, wh);
+
+      // Glass edge reflection
+      ctx.strokeStyle = 'rgba(147, 197, 253, 0.25)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(wx, wy, ww, wh);
+    });
+  });
+
+  return ctx.getImageData(0, 0, 256, 256);
+}
+
+/**
+ * Creates warm cream Parisian townhouse facade with classical French windows (256x256).
+ */
+export function createHaussmannWarmFacadeTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 256;
+  const ctx = canvas.getContext('2d');
+
+  // Warm cream stone (Pierre calcaire blonde)
+  const grad = ctx.createLinearGradient(0, 0, 0, 256);
+  grad.addColorStop(0, '#ebe1cf');
+  grad.addColorStop(0.5, '#dfd5bf');
+  grad.addColorStop(1, '#d5c9b0');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 256, 256);
+
+  // Stringcourses
+  [0, 128, 254].forEach(y => {
+    ctx.fillStyle = '#f8f2e4';
+    ctx.fillRect(0, y, 256, 2);
+    ctx.fillStyle = '#baa98f';
+    ctx.fillRect(0, y + 2, 256, 5);
+    ctx.fillStyle = '#7a6a52';
+    ctx.fillRect(0, y + 7, 256, 2);
+  });
+
+  // Windows
+  [64, 192].forEach(x => {
+    // Upper floor arched windows
+    const drawArchedWindow = (cx, topY, w, h) => {
+      const left = cx - w / 2;
+      ctx.fillStyle = '#baa98f';
+      ctx.fillRect(left - 4, topY - 5, w + 8, h + 10);
+      ctx.fillStyle = '#14181d';
+      ctx.fillRect(left, topY, w, h);
+
+      // Blue sky reflection
+      const g = ctx.createLinearGradient(left, topY, left + w, topY + h);
+      g.addColorStop(0, '#1e3857');
+      g.addColorStop(0.5, '#3b6a98');
+      g.addColorStop(1, '#182b42');
+      ctx.fillStyle = g;
+      ctx.fillRect(left + 2, topY + 2, w - 4, h - 4);
+
+      // White mullions
+      ctx.fillStyle = '#e2e8f0';
+      ctx.fillRect(cx - 1, topY + 2, 2, h - 4);
+      ctx.fillRect(left + 2, topY + h * 0.45, w - 4, 2);
+    };
+
+    drawArchedWindow(x, 26, 46, 76);
+    drawArchedWindow(x, 152, 48, 78);
+  });
+
+  return ctx.getImageData(0, 0, 256, 256);
+}
+
+/**
  * Creates high-resolution rooftop texture (256x256) with:
  * - Zinc standing-seam roof plates
  * - Air conditioning chiller & fan condenser units

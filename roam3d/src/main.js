@@ -20,6 +20,9 @@ import {
 import { initLanding, showHUD, showFinish } from './landing.js';
 import {
   createHaussmannFacadeTexture,
+  createDarkBlueGlassFacadeTexture,
+  createCityModernFacadeTexture,
+  createHaussmannWarmFacadeTexture,
   createRooftopTexture,
   createRoadAsphaltTexture,
   createZebraCrossingTexture,
@@ -105,9 +108,21 @@ async function onMapLoaded() {
 function setup3DBuildings() {
   // 1. Register high-resolution procedural textures with real-world architectural scaling
   try {
+    if (!map.hasImage('facade-glass-blue')) {
+      // Modern full-glass commercial city tower windows with dark blue tint
+      map.addImage('facade-glass-blue', createDarkBlueGlassFacadeTexture(), { pixelRatio: 10 });
+    }
+    if (!map.hasImage('facade-city-modern')) {
+      // Contemporary urban mixed granite & blue reflective glass facade
+      map.addImage('facade-city-modern', createCityModernFacadeTexture(), { pixelRatio: 10 });
+    }
     if (!map.hasImage('facade-haussmann')) {
-      // pixelRatio 10 scales 256px to 25.6 tile units: exactly 3.2m per floor & 1.3m per window!
+      // Classical Parisian Haussmann limestone with French balconies (3.2m floor scale)
       map.addImage('facade-haussmann', createHaussmannFacadeTexture(), { pixelRatio: 10 });
+    }
+    if (!map.hasImage('facade-haussmann-warm')) {
+      // Warm blonde Parisian townhouse stone with classical French casement windows
+      map.addImage('facade-haussmann-warm', createHaussmannWarmFacadeTexture(), { pixelRatio: 10 });
     }
     if (!map.hasImage('roof-ac-units')) {
       map.addImage('roof-ac-units', createRooftopTexture(), { pixelRatio: 8 });
@@ -297,12 +312,22 @@ function setup3DBuildings() {
   }
 
   // 4. 3D Solid Textured Buildings (Rendered ON TOP of all road and satellite layers)
+  // Data-driven variety: tall buildings get dark blue tinted full-glass windows,
+  // mid-rise buildings get modern urban commercial facade, and classic buildings get Haussmann facades.
+  const buildingPatternExpression = [
+    'case',
+    ['>', ['coalesce', ['get', 'render_height'], ['get', 'height'], 20], 28], 'facade-glass-blue',
+    ['>', ['coalesce', ['get', 'render_height'], ['get', 'height'], 20], 22], 'facade-city-modern',
+    ['==', ['%', ['coalesce', ['to-number', ['id']], 0], 2], 0], 'facade-haussmann',
+    'facade-haussmann-warm'
+  ];
+
   const existingExtrusionLayer = layers.find(
     l => l.type === 'fill-extrusion' && (l['source-layer'] === 'building' || l.id.includes('building'))
   );
 
   if (existingExtrusionLayer) {
-    map.setPaintProperty(existingExtrusionLayer.id, 'fill-extrusion-pattern', 'facade-haussmann');
+    map.setPaintProperty(existingExtrusionLayer.id, 'fill-extrusion-pattern', buildingPatternExpression);
     // Solid 1.0 opacity: completely occludes roads and satellite ground behind or underneath
     map.setPaintProperty(existingExtrusionLayer.id, 'fill-extrusion-opacity', 1.0);
     map.setPaintProperty(existingExtrusionLayer.id, 'fill-extrusion-height', [
@@ -329,7 +354,7 @@ function setup3DBuildings() {
       'source-layer': 'building',
       minzoom: 13.5,
       paint: {
-        'fill-extrusion-pattern': 'facade-haussmann',
+        'fill-extrusion-pattern': buildingPatternExpression,
         'fill-extrusion-height': [
           'interpolate', ['linear'], ['zoom'],
           13.5, 0,
@@ -450,10 +475,9 @@ function startGame(vehicleType, autopilotMode) {
   // Camera
   camera = new CameraController(map);
 
-  // Vehicle layer (placed before 2D symbol labels so text stays readable above 3D meshes)
-  const symbolLayer = map.getStyle().layers.find(l => l.type === 'symbol');
+  // Vehicle layer: added directly on top of all map & road layers
   vehicleLayer = new VehicleLayer();
-  map.addLayer(vehicleLayer, symbolLayer ? symbolLayer.id : undefined);
+  map.addLayer(vehicleLayer);
   vehicleLayer.setVehicleType(vehicleType);
 
   // Landmarks
@@ -496,6 +520,17 @@ function startGame(vehicleType, autopilotMode) {
     landmarks.setSpeech(!enabled); // toggle
     el.textContent = enabled ? '🔇 Voice' : '🔊 Voice';
   });
+
+  // Toggle landmarks on/off button
+  const btnLandmarks = document.getElementById('btn-landmarks');
+  if (btnLandmarks) {
+    btnLandmarks.addEventListener('click', () => {
+      const visible = landmarks.toggleVisible();
+      btnLandmarks.classList.toggle('active', visible);
+      btnLandmarks.textContent = visible ? '🏛️ Landmarks' : '🏛️ Landmarks Off';
+    });
+  }
+
   document.getElementById('btn-vehicle-switch').addEventListener('click', () => {
     driving.vehicleType = driving.vehicleType === 'car' ? 'bike' : 'car';
     vehicleLayer.setVehicleType(driving.vehicleType);
@@ -503,7 +538,7 @@ function startGame(vehicleType, autopilotMode) {
   });
   document.getElementById('btn-challenge').addEventListener('click', toggleChallenge);
 
-  // Shortcut keys (V = vehicle, C = camera, P = autopilot)
+  // Shortcut keys (V = vehicle, C = camera, P = autopilot, L = landmarks)
   // NOTE: A/D are reserved for WASD steering — do NOT bind autopilot to A!
   window.addEventListener('keydown', (e) => {
     if (!gameRunning) return;
@@ -519,6 +554,13 @@ function startGame(vehicleType, autopilotMode) {
     if (e.code === 'KeyP') {
       driving.autopilot = !driving.autopilot;
       updateAutopilotBtn(driving.autopilot);
+    }
+    if (e.code === 'KeyL') {
+      const visible = landmarks.toggleVisible();
+      if (btnLandmarks) {
+        btnLandmarks.classList.toggle('active', visible);
+        btnLandmarks.textContent = visible ? '🏛️ Landmarks' : '🏛️ Landmarks Off';
+      }
     }
   });
 

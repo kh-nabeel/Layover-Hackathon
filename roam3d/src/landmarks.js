@@ -22,6 +22,7 @@ export class LandmarkManager {
     this._speechEnabled = true;
     this._cardShown = false;
     this._markers = [];
+    this._visible = true;
     this._onVisit = null; // callback(landmark, visitedCount)
     this._cardTimer = null;
 
@@ -124,6 +125,27 @@ export class LandmarkManager {
       try { window.speechSynthesis.cancel(); } catch (e) {}
     }
   }
+
+  setVisible(visible) {
+    this._visible = visible;
+    this._markers.forEach(entry => {
+      entry.el.style.display = visible ? '' : 'none';
+    });
+    if (!visible) {
+      const card = document.getElementById('landmark-card');
+      if (card) card.style.display = 'none';
+      if ('speechSynthesis' in window) {
+        try { window.speechSynthesis.cancel(); } catch (e) {}
+      }
+    }
+  }
+
+  toggleVisible() {
+    this.setVisible(!this._visible);
+    return this._visible;
+  }
+
+  isVisible() { return this._visible; }
 
   getVisitedCount() { return this.visited.size; }
   isAllVisited()    { return this.visited.size >= LANDMARKS.length; }
