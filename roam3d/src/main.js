@@ -103,26 +103,37 @@ async function onMapLoaded() {
 
 // ─── 3D Buildings, Textures & Satellite Environment Setup ──────────────────
 function setup3DBuildings() {
-  // 1. Register high-resolution procedural textures
+  // 1. Register high-resolution procedural textures with real-world architectural scaling
   try {
     if (!map.hasImage('facade-haussmann')) {
-      map.addImage('facade-haussmann', createHaussmannFacadeTexture());
+      // pixelRatio 10 scales 256px to 25.6 tile units: exactly 3.2m per floor & 1.3m per window!
+      map.addImage('facade-haussmann', createHaussmannFacadeTexture(), { pixelRatio: 10 });
     }
     if (!map.hasImage('roof-ac-units')) {
-      map.addImage('roof-ac-units', createRooftopTexture());
+      map.addImage('roof-ac-units', createRooftopTexture(), { pixelRatio: 8 });
     }
     if (!map.hasImage('road-asphalt')) {
-      map.addImage('road-asphalt', createRoadAsphaltTexture());
+      map.addImage('road-asphalt', createRoadAsphaltTexture(), { pixelRatio: 4 });
     }
     if (!map.hasImage('crosswalk-zebra')) {
-      map.addImage('crosswalk-zebra', createZebraCrossingTexture());
+      map.addImage('crosswalk-zebra', createZebraCrossingTexture(), { pixelRatio: 4 });
     }
     if (!map.hasImage('pavement-stone')) {
-      map.addImage('pavement-stone', createPavementTexture());
+      map.addImage('pavement-stone', createPavementTexture(), { pixelRatio: 4 });
     }
   } catch (err) {
     console.warn('Texture registration notice:', err);
   }
+
+  const layers = map.getStyle().layers;
+
+  // Identify building layer ID so all ground, satellite, road, and route layers
+  // are guaranteed to be placed BEFORE (underneath) buildings.
+  // This completely eliminates roads showing through 3D buildings!
+  const buildingLayer = layers.find(
+    l => l.type === 'fill-extrusion' || (l.type === 'fill' && (l['source-layer'] === 'building' || l.id.includes('building')))
+  );
+  const buildingBeforeId = buildingLayer ? buildingLayer.id : undefined;
 
   // 2. High-Resolution Satellite Ground Layer (ESRI World Imagery)
   try {
@@ -137,11 +148,10 @@ function setup3DBuildings() {
       });
     }
 
-    const layers = map.getStyle().layers;
     const firstRoad = layers.find(
       l => l['source-layer'] === 'transportation' || l.id.includes('road') || l.id.includes('tunnel')
     );
-    const roadBeforeId = firstRoad ? firstRoad.id : undefined;
+    const roadBeforeId = firstRoad ? firstRoad.id : buildingBeforeId;
 
     if (!map.getLayer('satellite-base')) {
       map.addLayer({
@@ -159,53 +169,108 @@ function setup3DBuildings() {
     console.warn('Satellite layer notice:', e);
   }
 
-  // 3. High-Resolution Road Surface, Center Lane Stripes, and Sidewalk Overlays
+  // 3. Real-World Scaled Road Surfaces (Placed strictly BEFORE buildings)
   try {
-    if (!map.getLayer('roam3d-roads-hd')) {
+    // A. Major Boulevards & Avenues (Champs-Élysées, Saint-Germain, etc. ~20m real width)
+    if (!map.getLayer('roam3d-roads-primary')) {
       map.addLayer({
-        id: 'roam3d-roads-hd',
+        id: 'roam3d-roads-primary',
         type: 'line',
         source: 'openmaptiles',
         'source-layer': 'transportation',
-        filter: ['!=', 'class', 'rail'],
+        filter: ['in', 'class', 'motorway', 'trunk', 'primary'],
         layout: { 'line-join': 'round', 'line-cap': 'round' },
         paint: {
-          'line-color': '#1e2229',
+          'line-color': '#1c2026',
           'line-width': [
-            'interpolate', ['exponential', 1.5], ['zoom'],
-            13, 3,
-            15, 8,
-            17, 18,
-            19, 36,
+            'interpolate', ['linear'], ['zoom'],
+            14, 3.5,
+            16, 13,
+            17, 26,
+            18, 52,
+            19, 104,
+            20, 208,
           ],
-          'line-opacity': 0.94,
+          'line-opacity': 0.95,
         },
-      });
+      }, buildingBeforeId);
     }
 
-    // White dashed center lane lines on main roads
+    // B. Secondary Thoroughfares & City Streets (~13m real width)
+    if (!map.getLayer('roam3d-roads-secondary')) {
+      map.addLayer({
+        id: 'roam3d-roads-secondary',
+        type: 'line',
+        source: 'openmaptiles',
+        'source-layer': 'transportation',
+        filter: ['in', 'class', 'secondary', 'tertiary'],
+        layout: { 'line-join': 'round', 'line-cap': 'round' },
+        paint: {
+          'line-color': '#21252d',
+          'line-width': [
+            'interpolate', ['linear'], ['zoom'],
+            14, 2.5,
+            16, 8.5,
+            17, 17,
+            18, 34,
+            19, 68,
+            20, 136,
+          ],
+          'line-opacity': 0.95,
+        },
+      }, buildingBeforeId);
+    }
+
+    // C. Minor & Residential Parisian Rues (~8m real width)
+    if (!map.getLayer('roam3d-roads-minor')) {
+      map.addLayer({
+        id: 'roam3d-roads-minor',
+        type: 'line',
+        source: 'openmaptiles',
+        'source-layer': 'transportation',
+        filter: ['!in', 'class', 'motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'rail'],
+        layout: { 'line-join': 'round', 'line-cap': 'round' },
+        paint: {
+          'line-color': '#242932',
+          'line-width': [
+            'interpolate', ['linear'], ['zoom'],
+            14, 1.5,
+            16, 5,
+            17, 10,
+            18, 20,
+            19, 41,
+            20, 82,
+          ],
+          'line-opacity': 0.92,
+        },
+      }, buildingBeforeId);
+    }
+
+    // D. White Dashed Center Lane Stripes on Boulevards and Main Roads (~0.25m real width)
     if (!map.getLayer('roam3d-roads-lanes')) {
       map.addLayer({
         id: 'roam3d-roads-lanes',
         type: 'line',
         source: 'openmaptiles',
         'source-layer': 'transportation',
-        filter: ['in', 'class', 'primary', 'secondary', 'trunk', 'motorway', 'main'],
+        filter: ['in', 'class', 'motorway', 'trunk', 'primary', 'secondary'],
         paint: {
           'line-color': '#ffffff',
           'line-width': [
             'interpolate', ['linear'], ['zoom'],
-            16, 1.2,
-            18, 2.5,
-            20, 4.0,
+            16, 1.0,
+            17, 1.6,
+            18, 2.8,
+            19, 5.2,
+            20, 10.4,
           ],
-          'line-dasharray': [2, 3],
+          'line-dasharray': [3, 4],
           'line-opacity': 0.88,
         },
-      });
+      }, buildingBeforeId);
     }
 
-    // Parisian sidewalk pavements
+    // E. Parisian Sidewalk Pavements (~4m real width)
     if (!map.getLayer('roam3d-pavements')) {
       map.addLayer({
         id: 'roam3d-pavements',
@@ -214,30 +279,32 @@ function setup3DBuildings() {
         'source-layer': 'transportation',
         filter: ['in', 'class', 'path', 'pedestrian', 'footway'],
         paint: {
-          'line-color': '#d5cbbd',
+          'line-color': '#ded5c7',
           'line-width': [
             'interpolate', ['linear'], ['zoom'],
-            15, 2,
-            18, 6,
-            20, 12,
+            15, 2.5,
+            17, 5,
+            18, 10,
+            19, 21,
+            20, 42,
           ],
-          'line-opacity': 0.85,
+          'line-opacity': 0.88,
         },
-      });
+      }, buildingBeforeId);
     }
   } catch (e) {
     console.warn('Road overlays notice:', e);
   }
 
-  // 4. 3D Textured Buildings with Window/Facade Texture & Rooftop Details
-  const layers = map.getStyle().layers;
+  // 4. 3D Solid Textured Buildings (Rendered ON TOP of all road and satellite layers)
   const existingExtrusionLayer = layers.find(
     l => l.type === 'fill-extrusion' && (l['source-layer'] === 'building' || l.id.includes('building'))
   );
 
   if (existingExtrusionLayer) {
     map.setPaintProperty(existingExtrusionLayer.id, 'fill-extrusion-pattern', 'facade-haussmann');
-    map.setPaintProperty(existingExtrusionLayer.id, 'fill-extrusion-opacity', 0.96);
+    // Solid 1.0 opacity: completely occludes roads and satellite ground behind or underneath
+    map.setPaintProperty(existingExtrusionLayer.id, 'fill-extrusion-opacity', 1.0);
     map.setPaintProperty(existingExtrusionLayer.id, 'fill-extrusion-height', [
       'interpolate', ['linear'], ['zoom'],
       13.5, 0,
@@ -273,7 +340,7 @@ function setup3DBuildings() {
           13.5, 0,
           14.5, ['coalesce', ['get', 'render_min_height'], ['get', 'min_height'], 0],
         ],
-        'fill-extrusion-opacity': 0.96,
+        'fill-extrusion-opacity': 1.0,
         'fill-extrusion-vertical-gradient': true,
       },
     }, beforeId);
@@ -319,6 +386,12 @@ function drawRouteOnMap() {
     });
   }
 
+  const layers = map.getStyle().layers;
+  const buildingLayer = layers.find(
+    l => l.type === 'fill-extrusion' || (l.type === 'fill' && (l['source-layer'] === 'building' || l.id.includes('building')))
+  );
+  const buildingBeforeId = buildingLayer ? buildingLayer.id : undefined;
+
   // Route outline (glow)
   if (!map.getLayer('route-glow')) {
     map.addLayer({
@@ -327,12 +400,18 @@ function drawRouteOnMap() {
       source: 'route',
       layout: { 'line-join': 'round', 'line-cap': 'round' },
       paint: {
-        'line-color': '#4fc3f7',
-        'line-width': 10,
-        'line-opacity': 0.25,
-        'line-blur': 4,
+        'line-color': '#0288d1',
+        'line-width': [
+          'interpolate', ['linear'], ['zoom'],
+          14, 6,
+          16, 12,
+          18, 24,
+          20, 48,
+        ],
+        'line-opacity': 0.35,
+        'line-blur': 3,
       },
-    });
+    }, buildingBeforeId);
   }
 
   // Route main line
@@ -343,11 +422,17 @@ function drawRouteOnMap() {
       source: 'route',
       layout: { 'line-join': 'round', 'line-cap': 'round' },
       paint: {
-        'line-color': '#29b6f6',
-        'line-width': 4,
-        'line-opacity': 0.85,
+        'line-color': '#00e5ff',
+        'line-width': [
+          'interpolate', ['linear'], ['zoom'],
+          14, 2.5,
+          16, 6,
+          18, 12,
+          20, 24,
+        ],
+        'line-opacity': 0.9,
       },
-    });
+    }, buildingBeforeId);
   }
 }
 
@@ -365,9 +450,10 @@ function startGame(vehicleType, autopilotMode) {
   // Camera
   camera = new CameraController(map);
 
-  // Vehicle layer
+  // Vehicle layer (placed before 2D symbol labels so text stays readable above 3D meshes)
+  const symbolLayer = map.getStyle().layers.find(l => l.type === 'symbol');
   vehicleLayer = new VehicleLayer();
-  map.addLayer(vehicleLayer);
+  map.addLayer(vehicleLayer, symbolLayer ? symbolLayer.id : undefined);
   vehicleLayer.setVehicleType(vehicleType);
 
   // Landmarks

@@ -26,8 +26,8 @@ export class VehicleLayer {
     this._mercPos = null;
     // Current bearing in degrees
     this._bearing = 0;
-    // Altitude offset (metres) – lifts vehicle so wheels sit on road surface
-    this._altOffset = 1.2;
+    // Altitude offset (metres) – 0.02m (2cm) so wheels sit firmly on road surface without z-fighting
+    this._altOffset = 0.02;
   }
 
   /** Called once by MapLibre when the layer is added */
@@ -132,9 +132,8 @@ export class VehicleLayer {
     // Scale factor: 1 meter in Mercator units at this latitude
     const meterScale = merc.meterInMercatorCoordinateUnits();
 
-    // In Three.js, our vehicle is built in true metric meters (4.3m car).
-    // Scaling by 1.15x meterScale fits standard Paris avenue lanes perfectly.
-    const vehicleScale = meterScale * 1.15;
+    // Exact 1:1 real-world metric scale: 1 Three.js unit = 1 real-world meter
+    const vehicleScale = meterScale * 1.0;
 
     // 1. MapLibre view-projection matrix
     const projMatrix = new THREE.Matrix4().fromArray(matrixArr);
@@ -149,11 +148,6 @@ export class VehicleLayer {
 
     // 4. Heading rotation around vehicle's local UP axis:
     // Bearing is degrees clockwise from North.
-    // rotX * rotY(rad) maps:
-    // 0 deg -> North (0, -1, 0)
-    // 90 deg -> East (1, 0, 0)
-    // 180 deg -> South (0, 1, 0)
-    // 270 deg -> West (-1, 0, 0)
     const bearingRad = (this._bearing * Math.PI) / 180;
     const rotY = new THREE.Matrix4().makeRotationY(bearingRad);
 
@@ -171,6 +165,8 @@ export class VehicleLayer {
       .multiply(rotY)
       .multiply(scaleM);
 
+    gl.enable(gl.DEPTH_TEST);
+    gl.depthFunc(gl.LEQUAL);
     this.renderer.state.reset();
     this.renderer.render(this.scene, this.camera);
     this.map.triggerRepaint();

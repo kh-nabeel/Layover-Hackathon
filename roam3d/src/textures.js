@@ -13,227 +13,169 @@
  */
 export function createHaussmannFacadeTexture() {
   const canvas = document.createElement('canvas');
-  canvas.width = 512;
-  canvas.height = 512;
+  canvas.width = 256;
+  canvas.height = 256;
   const ctx = canvas.getContext('2d');
 
-  // 1. Base limestone wall color with subtle warm stone variation
-  const grad = ctx.createLinearGradient(0, 0, 0, 512);
-  grad.addColorStop(0, '#5a6268'); // Zinc roof tint at top
-  grad.addColorStop(0.2, '#ded3c2'); // Top floor limestone
-  grad.addColorStop(0.7, '#ece3d4'); // Middle floors warm Parisian stone
-  grad.addColorStop(1.0, '#3a3530'); // Ground floor dark shopfront base
+  // 1. Base Parisian Lutetian limestone (Pierre de Paris) with natural warm tone
+  const grad = ctx.createLinearGradient(0, 0, 0, 256);
+  grad.addColorStop(0, '#e8dfd1');
+  grad.addColorStop(0.5, '#dfd5c4');
+  grad.addColorStop(1, '#d8cdbb');
   ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, 512, 512);
+  ctx.fillRect(0, 0, 256, 256);
 
-  // 2. Horizontal architectural stringcourses (cornices between floors)
-  const cornices = [90, 200, 310, 410];
-  ctx.fillStyle = '#c7bca9';
-  cornices.forEach(y => {
-    ctx.fillRect(0, y - 4, 512, 8);
-    ctx.fillStyle = '#8b8070';
-    ctx.fillRect(0, y + 4, 512, 2); // shadow under cornice
+  // Subtle natural limestone grain
+  for (let i = 0; i < 400; i++) {
+    const rx = Math.random() * 256;
+    const ry = Math.random() * 256;
+    ctx.fillStyle = Math.random() > 0.5 ? 'rgba(255,255,255,0.08)' : 'rgba(90,80,65,0.06)';
+    ctx.fillRect(rx, ry, 2, 2);
+  }
+
+  // 2. Horizontal architectural stringcourses (cornices dividing floors)
+  // Floor 1 (top): y 0..128, Floor 2 (bottom): y 128..256
+  const stringcourses = [0, 128, 254];
+  stringcourses.forEach(y => {
+    // Upper highlight
+    ctx.fillStyle = '#f3ebe0';
+    ctx.fillRect(0, y, 256, 2);
+    // Main stone mould
     ctx.fillStyle = '#c7bca9';
+    ctx.fillRect(0, y + 2, 256, 4);
+    // Cast shadow beneath cornice
+    ctx.fillStyle = '#8b8070';
+    ctx.fillRect(0, y + 6, 256, 2);
   });
 
-  // 3. Stone masonry ashlar block lines
-  ctx.strokeStyle = 'rgba(140, 130, 115, 0.35)';
+  // 3. Delicate ashlar masonry block joints
+  ctx.strokeStyle = 'rgba(135, 122, 105, 0.4)';
   ctx.lineWidth = 1;
-  for (let y = 90; y < 410; y += 30) {
+  // Intermediate horizontal stone courses
+  [32, 64, 96, 160, 192, 224].forEach(y => {
     ctx.beginPath();
     ctx.moveTo(0, y);
-    ctx.lineTo(512, y);
+    ctx.lineTo(256, y);
     ctx.stroke();
-    // Vertical joints staggered
-    const offset = (y % 60 === 0) ? 0 : 32;
-    for (let x = offset; x < 512; x += 64) {
+  });
+
+  // Staggered vertical ashlar mortar joints
+  for (let y = 0; y < 256; y += 32) {
+    const shift = (y % 64 === 0) ? 0 : 32;
+    for (let x = shift; x <= 256; x += 64) {
       ctx.beginPath();
       ctx.moveTo(x, y);
-      ctx.lineTo(x, y + 30);
+      ctx.lineTo(x, y + 32);
       ctx.stroke();
     }
   }
 
-  // Helper: Draw detailed French window with glass reflections & balcony
-  function drawFrenchWindow(x, y, w, h, hasBalcony = true) {
-    // Stone surround & arch
-    ctx.fillStyle = '#c8bba7';
-    ctx.fillRect(x - 5, y - 10, w + 10, h + 14);
+  // Helper: Draw authentic French window with glass reflections & optional balcony
+  function drawWindow(centerX, topY, width, height, hasBalcony) {
+    const leftX = centerX - width / 2;
 
-    // Decorative lintel pediment
-    ctx.fillStyle = '#b3a590';
-    ctx.beginPath();
-    ctx.moveTo(x - 8, y - 10);
-    ctx.lineTo(x + w / 2, y - 20);
-    ctx.lineTo(x + w + 8, y - 10);
-    ctx.fill();
+    // A. Stone lintel / pediment above window
+    ctx.fillStyle = '#c8bca9';
+    ctx.fillRect(leftX - 4, topY - 7, width + 8, 6);
+    // Decorative keystones in center
+    ctx.fillStyle = '#b7ab97';
+    ctx.fillRect(centerX - 4, topY - 10, 8, 9);
 
-    // Window frame (dark charcoal wood)
-    ctx.fillStyle = '#1c2024';
-    ctx.fillRect(x, y, w, h);
+    // B. Stone window sill at bottom
+    ctx.fillStyle = '#c2b5a1';
+    ctx.fillRect(leftX - 4, topY + height, width + 8, 5);
+    ctx.fillStyle = '#7a7060'; // sill drop shadow
+    ctx.fillRect(leftX - 3, topY + height + 5, width + 6, 2);
 
-    // Glass panes with sky reflection gradient
-    const glassGrad = ctx.createLinearGradient(x, y, x + w, y + h);
-    glassGrad.addColorStop(0, '#2c4a6f');
-    glassGrad.addColorStop(0.4, '#4f7ba8');
-    glassGrad.addColorStop(0.5, '#6a98c7');
+    // C. Dark wood/graphite window frame
+    ctx.fillStyle = '#16191d';
+    ctx.fillRect(leftX, topY, width, height);
+
+    // D. Reflective glass panes with sky gradient & soft ambient reflection
+    const glassX = leftX + 2.5;
+    const glassY = topY + 2.5;
+    const glassW = width - 5;
+    const glassH = height - 5;
+    const glassGrad = ctx.createLinearGradient(glassX, glassY, glassX + glassW, glassY + glassH);
+    glassGrad.addColorStop(0, '#2e496b');
+    glassGrad.addColorStop(0.35, '#4f7ba8');
+    glassGrad.addColorStop(0.5, '#76a5d4');
     glassGrad.addColorStop(1, '#1b324d');
     ctx.fillStyle = glassGrad;
-    ctx.fillRect(x + 3, y + 3, w - 6, h - 6);
+    ctx.fillRect(glassX, glassY, glassW, glassH);
 
-    // Window mullions (cross bars)
+    // E. White interior curtains hint at edges
+    ctx.fillStyle = 'rgba(255, 252, 240, 0.22)';
+    ctx.fillRect(glassX, glassY, 5, glassH);
+    ctx.fillRect(glassX + glassW - 5, glassY, 5, glassH);
+
+    // F. Window cross mullions (French window dividers)
     ctx.fillStyle = '#d5dfeb';
-    ctx.fillRect(x + w / 2 - 1, y, 2, h); // vertical
-    ctx.fillRect(x, y + h * 0.45, w, 2);  // horizontal
-    ctx.fillRect(x, y + h * 0.75, w, 2);  // lower transom
+    // Vertical center mullion
+    ctx.fillRect(centerX - 1, glassY, 2, glassH);
+    // Horizontal transom bars
+    ctx.fillRect(glassX, glassY + glassH * 0.35, glassW, 2);
+    ctx.fillRect(glassX, glassY + glassH * 0.72, glassW, 2);
 
-    // Wrought-iron balcony railing
+    // G. Ornate Parisian wrought-iron balcony railing (Garde-corps)
     if (hasBalcony) {
-      const by = y + h - 22;
-      const bh = 24;
-      // Balcony stone slab
-      ctx.fillStyle = '#b8ab96';
-      ctx.fillRect(x - 7, by + bh - 3, w + 14, 5);
+      const balH = 26;
+      const balY = topY + height - balH + 3;
+      const balW = width + 10;
+      const balL = centerX - balW / 2;
 
-      // Black iron railings
+      // Balcony cantilever stone slab
+      ctx.fillStyle = '#b5a794';
+      ctx.fillRect(balL - 2, balY + balH - 3, balW + 4, 5);
+      ctx.fillStyle = '#6e6455';
+      ctx.fillRect(balL - 1, balY + balH + 2, balW + 2, 2);
+
+      // Balcony frame (black wrought iron)
+      ctx.fillStyle = '#0f1115';
+      ctx.fillRect(balL, balY, balW, 2); // top rail
+      ctx.fillRect(balL, balY + balH - 4, balW, 2); // bottom rail
+      ctx.fillRect(balL, balY, 2, balH - 4); // left post
+      ctx.fillRect(balL + balW - 2, balY, 2, balH - 4); // right post
+
+      // Handrail polished brass / bronze highlight
+      ctx.fillStyle = '#374151';
+      ctx.fillRect(balL - 1, balY - 1, balW + 2, 2);
+
+      // Vertical balusters & geometric scrolls
       ctx.strokeStyle = '#0f1115';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(x - 6, by, w + 12, bh);
-
-      // Vertical balusters & decorative swirls
       ctx.lineWidth = 1.5;
-      for (let bx = x - 4; bx <= x + w + 4; bx += 6) {
+      for (let bx = balL + 4; bx <= balL + balW - 4; bx += 5.5) {
         ctx.beginPath();
-        ctx.moveTo(bx, by);
-        ctx.lineTo(bx, by + bh);
+        ctx.moveTo(bx, balY + 1);
+        ctx.lineTo(bx, balY + balH - 3);
         ctx.stroke();
       }
-      // Top handrail highlight
-      ctx.fillStyle = '#404552';
-      ctx.fillRect(x - 7, by - 1, w + 14, 2);
+
+      // Center decorative medallion
+      ctx.fillStyle = '#1e293b';
+      ctx.beginPath();
+      ctx.arc(centerX, balY + balH / 2 - 1, 4, 0, Math.PI * 2);
+      ctx.fill();
     }
   }
 
-  // Draw 3 rows of French windows (3 columns)
-  const windowCols = [50, 190, 330, 450];
-  // 2nd floor windows (piano nobile - tall with grand balcony)
-  windowCols.forEach(x => {
-    drawFrenchWindow(x, 225, 42, 75, true);
-  });
-  // 3rd floor windows
-  windowCols.forEach(x => {
-    drawFrenchWindow(x, 115, 38, 68, true);
-  });
-  // 4th floor windows
-  windowCols.forEach(x => {
-    drawFrenchWindow(x, 325, 38, 65, false);
+  // Draw 2 stories x 2 window bays:
+  // Bay centers at x: 64 and x: 192 (each bay 128px wide = 2.6m real-world width)
+  const bayX = [64, 192];
+
+  // Story 1 (top half, y: 0..128): Classic upper French windows with stone pediment
+  // Window: 48px wide (~1.25m) x 74px tall (~2.0m)
+  bayX.forEach(x => {
+    drawWindow(x, 28, 48, 74, false);
   });
 
-  // 4. Ground floor: Parisian boutique storefront (Y: 410 to 512)
-  ctx.fillStyle = '#22262c'; // Dark painted wood
-  ctx.fillRect(0, 410, 512, 102);
-
-  // Shop awning / fascia sign
-  ctx.fillStyle = '#14171a';
-  ctx.fillRect(20, 416, 472, 24);
-  ctx.fillStyle = '#eab308'; // Gold boutique lettering
-  ctx.font = 'bold 12px serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('LIBRAIRIE & CAFÉ DE PARIS', 256, 432);
-
-  // Display windows with warm interior glow
-  const shopGrad = ctx.createLinearGradient(40, 445, 40, 505);
-  shopGrad.addColorStop(0, '#fef08a');
-  shopGrad.addColorStop(0.3, '#fde047');
-  shopGrad.addColorStop(1, '#ca8a04');
-
-  // Left display window
-  ctx.fillStyle = shopGrad;
-  ctx.fillRect(40, 445, 170, 60);
-  ctx.strokeStyle = '#334155';
-  ctx.lineWidth = 3;
-  ctx.strokeRect(40, 445, 170, 60);
-
-  // Entrance door in center
-  ctx.fillStyle = '#0f172a';
-  ctx.fillRect(225, 445, 62, 67);
-  ctx.fillStyle = '#cbd5e1'; // Glass pane in door
-  ctx.fillRect(233, 452, 46, 38);
-  ctx.fillStyle = '#f59e0b'; // Brass handle
-  ctx.fillRect(272, 480, 4, 12);
-
-  // Right display window
-  ctx.fillStyle = shopGrad;
-  ctx.fillRect(300, 445, 170, 60);
-  ctx.strokeStyle = '#334155';
-  ctx.lineWidth = 3;
-  ctx.strokeRect(300, 445, 170, 60);
-
-  // 5. Roof level: Zinc roof plates, dormers, and rooftop Air Conditioning Units! (Y: 0 to 90)
-  ctx.fillStyle = '#475569'; // Parisian zinc roofing
-  ctx.fillRect(0, 0, 512, 90);
-
-  // Standing seams on zinc roof
-  ctx.strokeStyle = '#334155';
-  ctx.lineWidth = 2;
-  for (let x = 0; x < 512; x += 32) {
-    ctx.beginPath();
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x, 90);
-    ctx.stroke();
-  }
-
-  // Rooftop Dormer Windows (Lucarnes)
-  [80, 220, 360].forEach(x => {
-    // Zinc dormer casing
-    ctx.fillStyle = '#64748b';
-    ctx.fillRect(x - 4, 25, 34, 45);
-    ctx.fillStyle = '#1e293b';
-    ctx.fillRect(x, 30, 26, 36);
-    ctx.fillStyle = '#93c5fd';
-    ctx.fillRect(x + 2, 32, 22, 32);
-    // Triangular pediment
-    ctx.fillStyle = '#475569';
-    ctx.beginPath();
-    ctx.moveTo(x - 6, 25);
-    ctx.lineTo(x + 13, 10);
-    ctx.lineTo(x + 32, 25);
-    ctx.fill();
+  // Story 2 (bottom half, y: 128..256): Piano Nobile with grand wrought-iron balcony
+  // Window: 50px wide (~1.3m) x 78px tall (~2.1m)
+  bayX.forEach(x => {
+    drawWindow(x, 150, 50, 78, true);
   });
 
-  // Rooftop Air Conditioning Condenser Unit & ventilation duct
-  // AC Unit 1
-  ctx.fillStyle = '#94a3b8'; // Metal casing
-  ctx.fillRect(430, 30, 50, 40);
-  ctx.fillStyle = '#334155'; // Ventilation fan grille
-  ctx.beginPath();
-  ctx.arc(455, 50, 14, 0, Math.PI * 2);
-  ctx.fill();
-  // Fan blades
-  ctx.strokeStyle = '#e2e8f0';
-  ctx.lineWidth = 2;
-  for (let a = 0; a < Math.PI * 2; a += Math.PI / 2) {
-    ctx.beginPath();
-    ctx.moveTo(455, 50);
-    ctx.lineTo(455 + Math.cos(a) * 12, 50 + Math.sin(a) * 12);
-    ctx.stroke();
-  }
-  // Refrigerant service pipes
-  ctx.strokeStyle = '#b45309'; // Copper pipe
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.moveTo(430, 60);
-  ctx.lineTo(415, 60);
-  ctx.lineTo(415, 80);
-  ctx.stroke();
-
-  // Chimney pots (terracotta)
-  ctx.fillStyle = '#dc2626';
-  ctx.fillRect(10, 15, 24, 30);
-  ctx.fillStyle = '#991b1b';
-  ctx.fillRect(8, 12, 28, 6);
-
-  return ctx.getImageData(0, 0, 512, 512);
+  return ctx.getImageData(0, 0, 256, 256);
 }
 
 /**
