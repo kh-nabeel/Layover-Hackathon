@@ -79,12 +79,12 @@ export function buildCar(color = 0x0284c7) {
   const shadowMat = new THREE.MeshBasicMaterial({
     map: createShadowTexture(),
     transparent: true,
-    opacity: 0.7,
+    opacity: 0.75,
     depthWrite: false,
   });
   const shadow = new THREE.Mesh(shadowGeo, shadowMat);
   shadow.rotation.x = -Math.PI / 2;
-  shadow.position.set(0, 0.02, 0);
+  shadow.position.set(0, 0.01, 0);
   group.add(shadow);
 
   // 2. Main lower body / chassis
@@ -92,6 +92,25 @@ export function buildCar(color = 0x0284c7) {
   const body = new THREE.Mesh(bodyGeo, paintMat);
   body.position.set(0, 0.45, 0);
   group.add(body);
+
+  // Front sports grille & lower aero splitter
+  const grilleGeo = new THREE.BoxGeometry(1.2, 0.22, 0.1);
+  const grille = new THREE.Mesh(grilleGeo, trimMat);
+  grille.position.set(0, 0.38, 2.16);
+  group.add(grille);
+
+  const splitterGeo = new THREE.BoxGeometry(1.88, 0.06, 0.3);
+  const splitter = new THREE.Mesh(splitterGeo, trimMat);
+  splitter.position.set(0, 0.18, 2.12);
+  group.add(splitter);
+
+  // Aerodynamic side skirts
+  [-0.94, 0.94].forEach(x => {
+    const skirtGeo = new THREE.BoxGeometry(0.08, 0.12, 2.8);
+    const skirt = new THREE.Mesh(skirtGeo, trimMat);
+    skirt.position.set(x, 0.22, 0);
+    group.add(skirt);
+  });
 
   // 3. Front hood slope
   const hoodGeo = new THREE.BoxGeometry(1.8, 0.25, 1.4);
@@ -134,9 +153,11 @@ export function buildCar(color = 0x0284c7) {
     group.add(mirror);
   });
 
-  // 9. Wheels & Rims with Steering Pivots
-  const wheelGeo = new THREE.CylinderGeometry(0.33, 0.33, 0.22, 16);
-  const rimGeo = new THREE.CylinderGeometry(0.2, 0.2, 0.24, 8);
+  // 9. Wheels & Rims with Steering Pivots & Red Brake Calipers
+  const wheelGeo = new THREE.CylinderGeometry(0.33, 0.33, 0.22, 18);
+  const rimGeo = new THREE.CylinderGeometry(0.2, 0.2, 0.24, 10);
+  const caliperMat = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.3 }); // Red sports caliper
+  const caliperGeo = new THREE.BoxGeometry(0.08, 0.14, 0.1);
   const frontSteerGroups = [];
 
   // Front wheels (pivot when steering with A/D)
@@ -151,6 +172,10 @@ export function buildCar(color = 0x0284c7) {
     const rim = new THREE.Mesh(rimGeo, rimMat);
     rim.rotation.z = Math.PI / 2;
     steerPivot.add(rim);
+
+    const caliper = new THREE.Mesh(caliperGeo, caliperMat);
+    caliper.position.set(x > 0 ? -0.06 : 0.06, 0.08, 0.04);
+    steerPivot.add(caliper);
 
     group.add(steerPivot);
     frontSteerGroups.push(steerPivot);
@@ -167,6 +192,10 @@ export function buildCar(color = 0x0284c7) {
     rim.rotation.z = Math.PI / 2;
     rim.position.set(x, 0.33, -1.35);
     group.add(rim);
+
+    const caliper = new THREE.Mesh(caliperGeo, caliperMat);
+    caliper.position.set(x > 0 ? x - 0.06 : x + 0.06, 0.41, -1.31);
+    group.add(caliper);
   });
 
   group.userData.setSteering = (steerDeg) => {
@@ -185,12 +214,12 @@ export function buildCar(color = 0x0284c7) {
   });
 
   // 11. Headlight Light Cones / Beams (Cast on road ahead in Street View)
-  const beamGeo = new THREE.ConeGeometry(1.3, 8.5, 16, 1, true);
+  const beamGeo = new THREE.ConeGeometry(1.4, 10.0, 16, 1, true);
   const beamMeshes = [];
   [-0.55, 0.55].forEach(x => {
     const beam = new THREE.Mesh(beamGeo, beamMat);
     beam.rotation.x = -Math.PI / 2 + 0.08;
-    beam.position.set(x, 0.45, 6.0);
+    beam.position.set(x, 0.45, 6.8);
     group.add(beam);
     beamMeshes.push(beam);
   });
@@ -198,25 +227,34 @@ export function buildCar(color = 0x0284c7) {
   // Dual forward illumination lights
   const headlampLights = [];
   [-0.55, 0.55].forEach(x => {
-    const lamp = new THREE.PointLight(0xfff7d6, 2.5, 25);
-    lamp.position.set(x, 0.55, 2.5);
+    const lamp = new THREE.PointLight(0xfff7d6, 2.8, 30);
+    lamp.position.set(x, 0.55, 2.6);
     group.add(lamp);
     headlampLights.push(lamp);
   });
 
   group.userData.setHeadlights = (enabled) => {
     beamMeshes.forEach(b => { b.visible = enabled; });
-    headlampLights.forEach(l => { l.intensity = enabled ? 2.5 : 0; });
+    headlampLights.forEach(l => { l.intensity = enabled ? 2.8 : 0; });
     headlightMeshes.forEach(m => {
       m.material = enabled ? headlightMat : trimMat;
     });
   };
 
-  // 12. Rear Taillight Strip (Glowing Red)
+  // 12. Rear Taillight Strip (Glowing Red) & Dual Chrome Exhaust Tips
   const tailGeo = new THREE.BoxGeometry(1.7, 0.1, 0.06);
   const taillight = new THREE.Mesh(tailGeo, taillightMat);
   taillight.position.set(0, 0.65, -2.16);
   group.add(taillight);
+
+  const exhaustGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.22, 10);
+  const exhaustMat = new THREE.MeshStandardMaterial({ color: 0xd4d4d8, metalness: 0.9, roughness: 0.15 });
+  [-0.45, 0.45].forEach(x => {
+    const ex = new THREE.Mesh(exhaustGeo, exhaustMat);
+    ex.rotation.x = Math.PI / 2;
+    ex.position.set(x, 0.26, -2.2);
+    group.add(ex);
+  });
 
   group.name = 'car';
   return group;

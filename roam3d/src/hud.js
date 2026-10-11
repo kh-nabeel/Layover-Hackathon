@@ -99,3 +99,35 @@ export function updateChallengeTimer(secondsLeft) {
   const secs = Math.floor(secondsLeft % 60).toString().padStart(2, '0');
   document.getElementById('challenge-time').textContent = `${mins}:${secs}`;
 }
+
+/** Update Day / Night cycle button label & icon */
+export function updateDayNightBtn(mode) {
+  const btn = document.getElementById('btn-daynight');
+  if (!btn) return;
+  const label = document.getElementById('label-daynight');
+  const sunSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`;
+  const sunsetSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><path d="M12 10V2"/><path d="m4.93 10.93 1.41-1.41"/><path d="M2 18h2"/><path d="M20 18h2"/><path d="m19.07 10.93-1.41-1.41"/><path d="M22 22H2"/><path d="m16 6-4 4-4-4"/><path d="M16 18a4 4 0 0 0-8 0"/></svg>`;
+  const moonSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>`;
+  const cycleSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>`;
+
+  let svg = sunSvg;
+  let text = 'Day';
+  if (mode === 'day') {
+    svg = sunSvg;
+    text = 'Day';
+    btn.classList.remove('active');
+  } else if (mode === 'sunset') {
+    svg = sunsetSvg;
+    text = 'Sunset';
+    btn.classList.add('active');
+  } else if (mode === 'night') {
+    svg = moonSvg;
+    text = 'Night';
+    btn.classList.add('active');
+  } else {
+    svg = cycleSvg;
+    text = 'Cycle';
+    btn.classList.add('active');
+  }
+  btn.innerHTML = `${svg}<span>${text}</span>`;
+}

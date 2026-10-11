@@ -202,6 +202,10 @@
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
           <span>Lights</span>
         </button>
+        <button id="btn-daynight" title="Time of Day: Day / Sunset / Night / Cycle (N)">
+          <svg id="svg-daynight" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          <span id="label-daynight">Day</span>
+        </button>
         <button id="btn-challenge" title="10-min Challenge">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
           <span>Challenge</span>
@@ -325,6 +329,19 @@
           <!-- Environment & World Section -->
           <div class="settings-section">
             <div class="section-title">Environment & Graphics</div>
+
+            <div class="setting-row">
+              <div class="setting-label">
+                <span class="setting-name">Time of Day & Atmosphere</span>
+                <span class="setting-desc">Daylight, Sunset Golden Hour, Midnight, or 24h Cycle</span>
+              </div>
+              <select id="setting-daynight-select" class="settings-select" style="background:#1e293b; color:#e2e8f0; border:1px solid #334155; padding:6px 12px; border-radius:8px; font-size:13px; font-weight:500;">
+                <option value="day">☀️ Bright Daylight</option>
+                <option value="sunset">🌅 Sunset Golden Dusk</option>
+                <option value="night">🌙 Paris Midnight</option>
+                <option value="cycle">🔄 Dynamic 24h Cycle</option>
+              </select>
+            </div>
 
             <div class="setting-slider-row">
               <div class="slider-header">

@@ -8,10 +8,10 @@ import { PARIS_ANCHOR_LNG_LAT, lngLatToWorld } from './customLayer.js';
 export function buildStreetLight() {
   const group = new THREE.Group();
 
-  // Dark green / bronze Parisian iron finish
+  // Dark green / bronze Parisian iron finish (Haussmannian Vert Paris)
   const ironMat = new THREE.MeshStandardMaterial({
-    color: 0x1d2d24,
-    roughness: 0.45,
+    color: 0x1d2e24,
+    roughness: 0.42,
     metalness: 0.65,
   });
 
@@ -21,66 +21,79 @@ export function buildStreetLight() {
     metalness: 0.85,
   });
 
-  const glassMat = new THREE.MeshBasicMaterial({
-    color: 0xfff3c4,
+  const lanternGlassMat = new THREE.MeshStandardMaterial({
+    color: 0xfff6cf,
+    emissive: 0xffba42,
+    emissiveIntensity: 0.4,
+    roughness: 0.2,
+    transparent: true,
+    opacity: 0.9,
   });
 
-  // Base fluted pedestal
-  const baseGeo = new THREE.CylinderGeometry(0.28, 0.38, 0.8, 8);
+  // Base pedestal extending slightly below 0 (-0.2m) to prevent any ground floating
+  const baseGeo = new THREE.CylinderGeometry(0.24, 0.34, 0.8, 8);
   const base = new THREE.Mesh(baseGeo, ironMat);
-  base.position.y = 0.4;
+  base.position.y = 0.2; // from -0.2 to 0.6
   group.add(base);
 
   // Decorative ring
-  const ringGeo = new THREE.TorusGeometry(0.25, 0.05, 8, 16);
+  const ringGeo = new THREE.TorusGeometry(0.22, 0.045, 8, 16);
   const ring = new THREE.Mesh(ringGeo, goldMat);
   ring.rotation.x = Math.PI / 2;
-  ring.position.y = 0.82;
+  ring.position.y = 0.62;
   group.add(ring);
 
-  // Main column (tapered)
-  const poleGeo = new THREE.CylinderGeometry(0.09, 0.16, 3.4, 8);
+  // Main fluted column (tapered)
+  const poleGeo = new THREE.CylinderGeometry(0.08, 0.14, 3.2, 8);
   const pole = new THREE.Mesh(poleGeo, ironMat);
-  pole.position.y = 2.5;
+  pole.position.y = 2.22;
   group.add(pole);
 
-  // Lantern capital bracket
-  const capGeo = new THREE.CylinderGeometry(0.22, 0.1, 0.35, 6);
+  // Ornate capital bracket
+  const capGeo = new THREE.CylinderGeometry(0.22, 0.09, 0.3, 6);
   const cap = new THREE.Mesh(capGeo, ironMat);
-  cap.position.y = 4.3;
+  cap.position.y = 3.9;
   group.add(cap);
 
-  // Hexagonal lantern body (glowing glass)
-  const lanternGeo = new THREE.CylinderGeometry(0.26, 0.16, 0.55, 6);
-  const lantern = new THREE.Mesh(lanternGeo, glassMat);
-  lantern.position.y = 4.7;
+  // Hexagonal lantern body
+  const lanternGeo = new THREE.CylinderGeometry(0.24, 0.15, 0.5, 6);
+  const lantern = new THREE.Mesh(lanternGeo, lanternGlassMat);
+  lantern.position.y = 4.3;
   group.add(lantern);
 
-  // Lantern roof & finial
-  const roofGeo = new THREE.ConeGeometry(0.32, 0.4, 6);
+  // Lantern roof & gold finial
+  const roofGeo = new THREE.ConeGeometry(0.3, 0.38, 6);
   const roof = new THREE.Mesh(roofGeo, ironMat);
-  roof.position.y = 5.15;
+  roof.position.y = 4.72;
   group.add(roof);
 
-  const finialGeo = new THREE.SphereGeometry(0.06, 8, 8);
+  const finialGeo = new THREE.SphereGeometry(0.055, 8, 8);
   const finial = new THREE.Mesh(finialGeo, goldMat);
-  finial.position.y = 5.4;
+  finial.position.y = 4.95;
   group.add(finial);
 
-  // Downward warm light cone
-  const coneGeo = new THREE.ConeGeometry(2.4, 4.8, 12, 1, true);
+  // Downward warm light cone (visible at night)
+  const coneGeo = new THREE.ConeGeometry(2.5, 4.4, 12, 1, true);
   const coneMat = new THREE.MeshBasicMaterial({
-    color: 0xffea9f,
+    color: 0xffdf88,
     transparent: true,
-    opacity: 0.12,
+    opacity: 0.16,
     blending: THREE.AdditiveBlending,
     side: THREE.DoubleSide,
     depthWrite: false,
   });
   const lightCone = new THREE.Mesh(coneGeo, coneMat);
-  lightCone.position.y = 2.4;
+  lightCone.position.y = 2.2;
   group.add(lightCone);
 
+  // Warm PointLight for realistic ground illumination at night
+  const light = new THREE.PointLight(0xffdf88, 1.8, 16);
+  light.position.y = 4.2;
+  group.add(light);
+
+  group.userData.lanternGlassMat = lanternGlassMat;
+  group.userData.lightCone = lightCone;
+  group.userData.light = light;
   group.name = 'street-light';
   return group;
 }
@@ -96,37 +109,36 @@ export function buildBench() {
   });
 
   const woodMat = new THREE.MeshStandardMaterial({
-    color: 0x8a532b,
-    roughness: 0.7,
-    metalness: 0.1,
+    color: 0x824c25,
+    roughness: 0.65,
+    metalness: 0.08,
   });
 
-  // Iron legs (left & right)
-  const legGeo = new THREE.BoxGeometry(0.08, 0.52, 0.65);
+  // Iron legs extending slightly into ground (-0.05m)
+  const legGeo = new THREE.BoxGeometry(0.08, 0.56, 0.65);
   [-0.9, 0.9].forEach(x => {
     const leg = new THREE.Mesh(legGeo, ironMat);
-    leg.position.set(x, 0.26, 0);
+    leg.position.set(x, 0.23, 0);
     group.add(leg);
 
-    // Backrest upright support
     const uprightGeo = new THREE.BoxGeometry(0.06, 0.5, 0.08);
     const upright = new THREE.Mesh(uprightGeo, ironMat);
-    upright.position.set(x, 0.65, -0.28);
+    upright.position.set(x, 0.62, -0.28);
     upright.rotation.x = -0.15;
     group.add(upright);
   });
 
-  // Seat wood slats (4 horizontal planks)
+  // Seat slats
   const slatGeo = new THREE.BoxGeometry(1.95, 0.04, 0.12);
   [-0.2, -0.06, 0.08, 0.22].forEach(z => {
     const slat = new THREE.Mesh(slatGeo, woodMat);
-    slat.position.set(0, 0.48, z);
+    slat.position.set(0, 0.45, z);
     group.add(slat);
   });
 
-  // Backrest wood slats (3 planks)
+  // Backrest slats
   const backSlatGeo = new THREE.BoxGeometry(1.95, 0.1, 0.035);
-  [0.6, 0.72, 0.84].forEach(y => {
+  [0.58, 0.70, 0.82].forEach(y => {
     const backSlat = new THREE.Mesh(backSlatGeo, woodMat);
     backSlat.position.set(0, y, -0.28);
     backSlat.rotation.x = -0.15;
@@ -137,154 +149,118 @@ export function buildBench() {
   return group;
 }
 
-// ─── 3. Tree Builders – 5 distinct species with size & shape variation ──────
+// ─── 3. Mastercrafted Parisian Tree Builders ────────────────────────────────
+// Clean, elegant 3D trees with tapered trunks rooted into ground and organic crowns.
 
-/** Parisian Boulevard Platane (wide spreading canopy, large) */
-function buildPlataneTree(scale) {
+/** Parisian Boulevard Platane (Plane Tree: wide, dappled shade canopy) */
+function buildPlataneTree(scale = 1.0) {
   const group = new THREE.Group();
   const s = scale;
-  const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5c4a36, roughness: 0.9, metalness: 0.05 });
-  const leafMat  = new THREE.MeshStandardMaterial({ color: 0x2e6b35, roughness: 0.75, metalness: 0.1 });
-  const leafMat2 = new THREE.MeshStandardMaterial({ color: 0x3a7f42, roughness: 0.7,  metalness: 0.1 });
-  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.22 * s, 0.36 * s, 3.6 * s, 8), trunkMat);
-  trunk.position.y = 1.8 * s;
+  const trunkMat = new THREE.MeshStandardMaterial({ color: 0x544332, roughness: 0.88, metalness: 0.05 });
+  const leafMat1 = new THREE.MeshStandardMaterial({ color: 0x2b6932, roughness: 0.72, metalness: 0.06 });
+  const leafMat2 = new THREE.MeshStandardMaterial({ color: 0x397e3f, roughness: 0.68, metalness: 0.06 });
+
+  // Rooted trunk (from y = -0.3 to +2.4)
+  const trunkGeo = new THREE.CylinderGeometry(0.2 * s, 0.36 * s, 2.8 * s, 8);
+  const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+  trunk.position.y = 1.1 * s;
   group.add(trunk);
-  const layers = [
-    { r: 2.4 * s, mat: leafMat,  y: 4.2 * s, ox: 0,       sx: 1.15, sy: 0.85, sz: 1.15 },
-    { r: 2.0 * s, mat: leafMat2, y: 5.4 * s, ox: 0.5 * s, sx: 1.0,  sy: 1.0,  sz: 1.0  },
-    { r: 1.5 * s, mat: leafMat,  y: 4.8 * s, ox:-0.5 * s, sx: 1.1,  sy: 0.9,  sz: 1.1  },
-    { r: 1.2 * s, mat: leafMat2, y: 5.8 * s, ox: 0.3 * s, sx: 1.0,  sy: 0.85, sz: 1.0  },
+
+  // Canopy tiers (clean spherical lobes with subtle offsets)
+  const canopyNodes = [
+    { r: 2.1 * s, x: 0, y: 3.2 * s, z: 0, mat: leafMat1 },
+    { r: 1.7 * s, x: 0.8 * s, y: 3.8 * s, z: 0.4 * s, mat: leafMat2 },
+    { r: 1.6 * s, x: -0.8 * s, y: 3.7 * s, z: -0.3 * s, mat: leafMat2 },
+    { r: 1.5 * s, x: 0.2 * s, y: 4.6 * s, z: 0, mat: leafMat1 },
   ];
-  layers.forEach(({ r, mat, y, ox, sx, sy, sz }) => {
-    const f = new THREE.Mesh(new THREE.DodecahedronGeometry(r, 1), mat);
-    f.position.set(ox, y, 0);
-    f.scale.set(sx, sy, sz);
-    group.add(f);
+  canopyNodes.forEach(n => {
+    const leaf = new THREE.Mesh(new THREE.IcosahedronGeometry(n.r, 1), n.mat);
+    leaf.position.set(n.x, n.y, n.z);
+    group.add(leaf);
   });
+
   group.name = 'tree-platane';
   return group;
 }
 
-/** Tall Poplar / Lombardy tree (narrow columnar) */
-function buildPoplarTree(scale) {
+/** Horse Chestnut / Marronnier (Classic Parisian round dense crown) */
+function buildChestnutTree(scale = 1.0) {
   const group = new THREE.Group();
   const s = scale;
-  const trunkMat = new THREE.MeshStandardMaterial({ color: 0x4a3d2c, roughness: 0.85, metalness: 0.05 });
-  const leafMat  = new THREE.MeshStandardMaterial({ color: 0x1f5c28, roughness: 0.7,  metalness: 0.1 });
-  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.16 * s, 0.28 * s, 5.5 * s, 7), trunkMat);
-  trunk.position.y = 2.75 * s;
-  group.add(trunk);
-  for (let i = 0; i < 3; i++) {
-    const f = new THREE.Mesh(new THREE.SphereGeometry(0.85 * s, 8, 7), leafMat);
-    f.scale.set(0.55, 1.4 + i * 0.15, 0.55);
-    f.position.y = (5.2 + i * 1.0) * s;
-    group.add(f);
-  }
-  group.name = 'tree-poplar';
-  return group;
-}
+  const trunkMat = new THREE.MeshStandardMaterial({ color: 0x423223, roughness: 0.9, metalness: 0.04 });
+  const leafMat1 = new THREE.MeshStandardMaterial({ color: 0x245828, roughness: 0.75, metalness: 0.05 });
+  const leafMat2 = new THREE.MeshStandardMaterial({ color: 0x316f36, roughness: 0.7, metalness: 0.05 });
 
-/** Horse Chestnut / Marronier (dense round crown, medium) */
-function buildChestnutTree(scale) {
-  const group = new THREE.Group();
-  const s = scale;
-  const trunkMat = new THREE.MeshStandardMaterial({ color: 0x3d2e1c, roughness: 0.92, metalness: 0.05 });
-  const leafMat  = new THREE.MeshStandardMaterial({ color: 0x3a7a2e, roughness: 0.8,  metalness: 0.1 });
-  const leafMat2 = new THREE.MeshStandardMaterial({ color: 0x4c9139, roughness: 0.75, metalness: 0.1 });
-  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.3 * s, 0.45 * s, 3.0 * s, 8), trunkMat);
-  trunk.position.y = 1.5 * s;
+  const trunkGeo = new THREE.CylinderGeometry(0.24 * s, 0.4 * s, 2.6 * s, 8);
+  const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+  trunk.position.y = 1.0 * s;
   group.add(trunk);
-  const crown = new THREE.Mesh(new THREE.SphereGeometry(2.6 * s, 9, 8), leafMat);
-  crown.scale.set(1.0, 0.78, 1.0);
-  crown.position.y = 4.8 * s;
-  group.add(crown);
-  [[-0.8, 5.4, 0.6], [0.9, 5.1, -0.5], [0, 6.1, 0.2]].forEach(([ox, y, oz], i) => {
-    const r = (1.4 + i * 0.15) * s;
-    const b = new THREE.Mesh(new THREE.SphereGeometry(r, 7, 6), leafMat2);
-    b.position.set(ox * s, y * s, oz * s);
-    group.add(b);
-  });
+
+  const mainCrown = new THREE.Mesh(new THREE.IcosahedronGeometry(2.3 * s, 1), leafMat1);
+  mainCrown.position.y = 3.6 * s;
+  mainCrown.scale.set(1.05, 1.15, 1.05);
+  group.add(mainCrown);
+
+  const topCrown = new THREE.Mesh(new THREE.IcosahedronGeometry(1.6 * s, 1), leafMat2);
+  topCrown.position.y = 4.8 * s;
+  group.add(topCrown);
+
   group.name = 'tree-chestnut';
   return group;
 }
 
-/** Mediterranean Cypress (very tall, dark, pencil-shaped) */
-function buildCypressTree(scale) {
+/** Lombardy Poplar (Tall, slender columnar tree) */
+function buildPoplarTree(scale = 1.0) {
   const group = new THREE.Group();
   const s = scale;
-  const trunkMat = new THREE.MeshStandardMaterial({ color: 0x2e200e, roughness: 0.95, metalness: 0.03 });
-  const leafMat  = new THREE.MeshStandardMaterial({ color: 0x1a4020, roughness: 0.65, metalness: 0.1 });
-  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.1 * s, 0.22 * s, 2.5 * s, 6), trunkMat);
-  trunk.position.y = 1.25 * s;
+  const trunkMat = new THREE.MeshStandardMaterial({ color: 0x483a2b, roughness: 0.85, metalness: 0.05 });
+  const leafMat  = new THREE.MeshStandardMaterial({ color: 0x1f5c27, roughness: 0.7, metalness: 0.08 });
+
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.14 * s, 0.26 * s, 3.6 * s, 7), trunkMat);
+  trunk.position.y = 1.5 * s;
   group.add(trunk);
-  for (let i = 0; i < 5; i++) {
-    const r = (1.0 - i * 0.12) * s;
-    const c = new THREE.Mesh(new THREE.ConeGeometry(r, 1.8 * s, 7), leafMat);
-    c.position.y = (2.5 + i * 1.3) * s;
-    group.add(c);
-  }
+
+  const crownGeo = new THREE.ConeGeometry(1.1 * s, 5.2 * s, 7);
+  const crown = new THREE.Mesh(crownGeo, leafMat);
+  crown.position.y = 4.6 * s;
+  group.add(crown);
+
+  group.name = 'tree-poplar';
+  return group;
+}
+
+/** Mediterranean Cypress (Slender elegant dark pencil tree) */
+function buildCypressTree(scale = 1.0) {
+  const group = new THREE.Group();
+  const s = scale;
+  const trunkMat = new THREE.MeshStandardMaterial({ color: 0x322316, roughness: 0.92, metalness: 0.03 });
+  const leafMat  = new THREE.MeshStandardMaterial({ color: 0x1b4322, roughness: 0.65, metalness: 0.08 });
+
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.12 * s, 0.22 * s, 2.2 * s, 6), trunkMat);
+  trunk.position.y = 0.9 * s;
+  group.add(trunk);
+
+  const crownGeo = new THREE.ConeGeometry(0.85 * s, 4.4 * s, 6);
+  const crown = new THREE.Mesh(crownGeo, leafMat);
+  crown.position.y = 3.6 * s;
+  group.add(crown);
+
   group.name = 'tree-cypress';
   return group;
 }
 
-/** Dense shrub / bush (low ground cover) */
-function buildShrub(scale) {
-  const group = new THREE.Group();
-  const s = scale;
-  const leafMat  = new THREE.MeshStandardMaterial({ color: 0x4a8a2c, roughness: 0.85, metalness: 0.05 });
-  const leafMat2 = new THREE.MeshStandardMaterial({ color: 0x5fa838, roughness: 0.8,  metalness: 0.05 });
-  [[-0.4, 0.7, 0.1], [0.5, 0.65, -0.3], [0, 0.9, 0.4], [-0.3, 0.6, -0.5], [0.2, 0.55, 0.6]].forEach(([ox, y, oz], i) => {
-    const r = (0.55 + i * 0.08) * s;
-    const b = new THREE.Mesh(new THREE.SphereGeometry(r, 7, 6), i % 2 === 0 ? leafMat : leafMat2);
-    b.position.set(ox * s, y * s, oz * s);
-    b.scale.set(1, 0.7, 1);
-    group.add(b);
-  });
-  group.name = 'tree-shrub';
-  return group;
-}
-
-/** Parisian Weeping Willow (Saule pleureur with cascading branches) */
-function buildWeepingWillowTree(scale) {
-  const group = new THREE.Group();
-  const s = scale;
-  const trunkMat = new THREE.MeshStandardMaterial({ color: 0x4a3722, roughness: 0.9, metalness: 0.04 });
-  const leafMat  = new THREE.MeshStandardMaterial({ color: 0x4f8730, roughness: 0.8, metalness: 0.08 });
-  const leafMat2 = new THREE.MeshStandardMaterial({ color: 0x3d6e24, roughness: 0.75, metalness: 0.08 });
-  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.24 * s, 0.42 * s, 3.2 * s, 8), trunkMat);
-  trunk.position.y = 1.6 * s;
-  group.add(trunk);
-  const mainDome = new THREE.Mesh(new THREE.SphereGeometry(2.2 * s, 8, 7), leafMat);
-  mainDome.scale.set(1.15, 0.75, 1.15);
-  mainDome.position.y = 3.6 * s;
-  group.add(mainDome);
-  for (let i = 0; i < 8; i++) {
-    const angle = (i / 8) * Math.PI * 2;
-    const r = 1.8 * s;
-    const frond = new THREE.Mesh(new THREE.ConeGeometry(0.55 * s, 2.4 * s, 5), i % 2 === 0 ? leafMat : leafMat2);
-    frond.position.set(Math.cos(angle) * r, 2.5 * s, Math.sin(angle) * r);
-    frond.rotation.z = Math.cos(angle) * 0.15;
-    frond.rotation.x = Math.sin(angle) * 0.15;
-    group.add(frond);
-  }
-  group.name = 'tree-willow';
-  return group;
-}
-
 const TREE_FACTORIES = [
-  buildPlataneTree, buildPlataneTree,
-  buildChestnutTree, buildChestnutTree,
-  buildCypressTree, buildCypressTree,
-  buildPoplarTree, buildPoplarTree,
-  buildWeepingWillowTree, buildWeepingWillowTree,
-  buildShrub,
+  buildPlataneTree,
+  buildChestnutTree,
+  buildPoplarTree,
+  buildCypressTree,
 ];
 
-/** Master factory — picks a random species + size variation (0.55x to 1.45x) */
+/** Master factory — selects balanced species with realistic Paris scale */
 export function buildTree() {
   const idx = Math.floor(Math.random() * TREE_FACTORIES.length);
-  const scaleFactor = 0.55 + Math.random() * 0.90; // 0.55x (young sapling) – 1.45x (mature giant)
-  const tree = TREE_FACTORIES[idx](scaleFactor);
+  const scale = 0.85 + Math.random() * 0.45; // 0.85x to 1.3x realistic scale
+  const tree = TREE_FACTORIES[idx](scale);
   tree.name = 'tree';
   return tree;
 }
@@ -541,6 +517,54 @@ export class SpatialCatalog {
   }
 }
 
+
+
+// Polyline coordinates for River Seine across Paris
+const SEINE_POINTS_LNG_LAT = [
+  [2.410, 48.825],
+  [2.395, 48.834],
+  [2.368, 48.847],
+  [2.353, 48.852],
+  [2.345, 48.856],
+  [2.336, 48.860],
+  [2.321, 48.863],
+  [2.312, 48.864],
+  [2.296, 48.860],
+  [2.285, 48.851],
+  [2.274, 48.846],
+  [2.253, 48.838],
+  [2.235, 48.830],
+];
+let _seineWorldSegments = null;
+function getSeineWorldSegments() {
+  if (!_seineWorldSegments) {
+    _seineWorldSegments = [];
+    for (let i = 0; i < SEINE_POINTS_LNG_LAT.length - 1; i++) {
+      const p1 = lngLatToWorld(SEINE_POINTS_LNG_LAT[i][0], SEINE_POINTS_LNG_LAT[i][1]);
+      const p2 = lngLatToWorld(SEINE_POINTS_LNG_LAT[i + 1][0], SEINE_POINTS_LNG_LAT[i + 1][1]);
+      _seineWorldSegments.push([p1, p2]);
+    }
+  }
+  return _seineWorldSegments;
+}
+
+export function isInSeineRiver(x, z) {
+  const segs = getSeineWorldSegments();
+  for (let i = 0; i < segs.length; i++) {
+    const [p1, p2] = segs[i];
+    const dx = p2.x - p1.x;
+    const dz = p2.z - p1.z;
+    const lenSq = dx * dx + dz * dz;
+    if (lenSq === 0) continue;
+    const t = Math.max(0, Math.min(1, ((x - p1.x) * dx + (z - p1.z) * dz) / lenSq));
+    const projX = p1.x + t * dx;
+    const projZ = p1.z + t * dz;
+    const distSq = (x - projX) * (x - projX) + (z - projZ) * (z - projZ);
+    if (distSq < 80 * 80) return true; // Inside Seine water
+  }
+  return false;
+}
+
 // ─── Props Manager ──────────────────────────────────────────────────────────
 export class PropsManager {
   constructor(scene) {
@@ -566,7 +590,7 @@ export class PropsManager {
 
     // State settings
     this.streetLightsEnabled = true;
-    this.streetLightsCount = 40;
+    this.streetLightsCount = 35;
     this.benchesEnabled = true;
     this.benchesCount = 20;
     this.treesEnabled = true;
@@ -575,44 +599,74 @@ export class PropsManager {
     this.fireCount = 15;
     this.dividersEnabled = false;
 
+    this.nightFactor = 0; // 0 = day, 1 = night
     this.lastVehicleX = -999999;
     this.lastVehicleZ = -999999;
     this._forceRefresh = true;
 
-    // Seed Paris iconic boulevards & landmarks into catalog
+    // Seed Paris iconic plazas and boulevards into catalog
     this._seedParisPlazasAndBoulevards();
 
     // Initialize mesh pools
     this._initPools();
   }
 
+  setNightFactor(factor) {
+    this.nightFactor = factor;
+    // Update active streetlights
+    const pool = this.pools.streetLights;
+    for (let i = 0; i < pool.length; i++) {
+      const obj = pool[i];
+      if (obj.userData.light) {
+        obj.userData.light.intensity = 1.8 * factor;
+      }
+      if (obj.userData.lightCone) {
+        obj.userData.lightCone.visible = factor > 0.08;
+        obj.userData.lightCone.material.opacity = 0.22 * factor;
+      }
+      if (obj.userData.lanternGlassMat) {
+        obj.userData.lanternGlassMat.emissiveIntensity = 0.2 + 1.2 * factor;
+      }
+    }
+  }
+
   _seedParisPlazasAndBoulevards() {
-    // 1. Champ de Mars / Eiffel Tower Allées (Avenue Gustave Eiffel, Avenue Anatole France)
     const eiffelCenter = [2.2945, 48.8584];
-    for (let dist = -250; dist <= 350; dist += 22) {
-      // Avenue along Champ de Mars parkway (heading ~135° SE)
+
+    // 1. Champ de Mars / Eiffel Promenade (heading ~135° SE)
+    for (let dist = -220; dist <= 320; dist += 60) {
       const p1 = offsetLngLat(eiffelCenter, 135, dist);
-      const left = offsetLngLat(p1, 45, 14);
-      const right = offsetLngLat(p1, 225, 14);
-      const wL = lngLatToWorld(left[0], left[1]);
-      const wR = lngLatToWorld(right[0], right[1]);
+      const isLeft = Math.floor((dist + 220) / 60) % 2 === 0;
+      const side = offsetLngLat(p1, isLeft ? 45 : 225, 14);
+      const wSide = lngLatToWorld(side[0], side[1]);
       const wC = lngLatToWorld(p1[0], p1[1]);
 
       const rotRoad = (135 * Math.PI) / 180;
-      this.catalog.add({ type: 'streetLight', x: wL.x, z: wL.z, rotY: rotRoad + Math.PI / 2 });
-      this.catalog.add({ type: 'streetLight', x: wR.x, z: wR.z, rotY: rotRoad - Math.PI / 2 });
-      this.catalog.add({ type: 'tree', x: wL.x + 1.5, z: wL.z, rotY: Math.random() * Math.PI * 2 });
-      this.catalog.add({ type: 'tree', x: wR.x - 1.5, z: wR.z, rotY: Math.random() * Math.PI * 2 });
-      if (Math.abs(dist) % 44 === 0) {
-        this.catalog.add({ type: 'bench', x: wL.x, z: wL.z - 2, rotY: rotRoad + Math.PI / 2 });
-        this.catalog.add({ type: 'bench', x: wR.x, z: wR.z - 2, rotY: rotRoad - Math.PI / 2 });
+      const rotY = isLeft ? rotRoad + Math.PI / 2 : rotRoad - Math.PI / 2;
+      this.catalog.add({ type: 'streetLight', x: wSide.x, z: wSide.z, rotY });
+
+      // Trees along Champ de Mars lawns (offset safely away from all roads)
+      const treeLeft = offsetLngLat(p1, 45, 22);
+      const treeRight = offsetLngLat(p1, 225, 22);
+      const wTL = lngLatToWorld(treeLeft[0], treeLeft[1]);
+      const wTR = lngLatToWorld(treeRight[0], treeRight[1]);
+      if (!isInSeineRiver(wTL.x, wTL.z)) {
+        this.catalog.add({ type: 'tree', x: wTL.x, z: wTL.z, rotY: Math.random() * Math.PI * 2 });
+      }
+      if (!isInSeineRiver(wTR.x, wTR.z)) {
+        this.catalog.add({ type: 'tree', x: wTR.x, z: wTR.z, rotY: Math.random() * Math.PI * 2 });
+      }
+
+      // Occasional park bench
+      if (Math.abs(dist) % 120 === 0) {
+        this.catalog.add({ type: 'bench', x: wSide.x, z: wSide.z - 2, rotY });
       }
       this.catalog.add({ type: 'divider', x: wC.x, z: wC.z, rotY: rotRoad });
     }
 
-    // Eiffel Tower base stone fire torches
-    [-20, 20].forEach(ox => {
-      [-20, 20].forEach(oz => {
+    // Eiffel Tower perimeter fire braziers
+    [-22, 22].forEach(ox => {
+      [-22, 22].forEach(oz => {
         const p = offsetLngLat(eiffelCenter, ox > 0 ? 90 : 270, Math.abs(ox));
         const p2 = offsetLngLat(p, oz > 0 ? 0 : 180, Math.abs(oz));
         const w = lngLatToWorld(p2[0], p2[1]);
@@ -621,19 +675,17 @@ export class PropsManager {
     });
 
     // 2. Pont d'Iéna bridge across the Seine (heading 315° NW)
-    for (let d = 50; d <= 230; d += 20) {
+    for (let d = 50; d <= 230; d += 45) {
       const pt = offsetLngLat(eiffelCenter, 315, d);
-      const left = offsetLngLat(pt, 225, 9.5);
-      const right = offsetLngLat(pt, 45, 9.5);
-      const wL = lngLatToWorld(left[0], left[1]);
-      const wR = lngLatToWorld(right[0], right[1]);
+      const isLeft = (d % 90 === 0);
+      const side = offsetLngLat(pt, isLeft ? 225 : 45, 8.5);
+      const wSide = lngLatToWorld(side[0], side[1]);
       const wC = lngLatToWorld(pt[0], pt[1]);
-      this.catalog.add({ type: 'streetLight', x: wL.x, z: wL.z, rotY: (315 + 90) * Math.PI / 180 });
-      this.catalog.add({ type: 'streetLight', x: wR.x, z: wR.z, rotY: (315 - 90) * Math.PI / 180 });
+      const rotY = isLeft ? (315 + 90) * Math.PI / 180 : (315 - 90) * Math.PI / 180;
+      this.catalog.add({ type: 'streetLight', x: wSide.x, z: wSide.z, rotY });
       this.catalog.add({ type: 'divider', x: wC.x, z: wC.z, rotY: (315 * Math.PI) / 180 });
       if (d === 50 || d === 230) {
-        this.catalog.add({ type: 'fire', x: wL.x, z: wL.z, rotY: 0 });
-        this.catalog.add({ type: 'fire', x: wR.x, z: wR.z, rotY: 0 });
+        this.catalog.add({ type: 'fire', x: wSide.x, z: wSide.z, rotY: 0 });
       }
     }
 
@@ -683,9 +735,9 @@ export class PropsManager {
     }
   }
 
-
   /**
-   * Load real Tour GeoJSON route and populate sidewalks along all 14.6 km of Paris streets.
+   * Load real Tour GeoJSON route and populate sidewalks along Paris boulevards.
+   * Spaced realistically with alternating streetlights and sidewalk trees.
    */
   loadRouteProps(routeLine) {
     if (!routeLine?.geometry?.coordinates) return;

@@ -48,8 +48,14 @@ export class VehicleLayer {
     this._mercPos = null;
     // Current bearing in degrees
     this._bearing = 0;
-    // Altitude offset (metres) – 0.15m so wheels sit cleanly above road plane without clipping
-    this._altOffset = 0.15;
+    // Altitude offset (metres) – 0.02m so wheels roll cleanly on road plane without floating or clipping
+    this._altOffset = 0.02;
+
+    // Day & Night Cycle State
+    this.dayNightMode = 'day'; // 'day', 'sunset', 'night', 'cycle'
+    this.dayNightProgress = 0; // 0..1 in cycle mode
+    this.nightFactor = 0;      // 0 = full daylight, 0.45 = sunset/dusk, 1 = full midnight
+    this.ambient = null;
   }
 
   /** Called once by MapLibre when the layer is added */
@@ -60,9 +66,9 @@ export class VehicleLayer {
     this.scene = new THREE.Scene();
     this.camera = new THREE.Camera();
 
-    // Daylight lighting setup: ambient + directional sun + soft fill
-    const ambient = new THREE.AmbientLight(0xffffff, 1.4);
-    this.scene.add(ambient);
+    // Lighting setup: ambient + directional sun + soft fill
+    this.ambient = new THREE.AmbientLight(0xffffff, 1.4);
+    this.scene.add(this.ambient);
 
     this.sun = new THREE.DirectionalLight(0xfff5e6, 2.2);
     this.sun.position.set(20, 60, 40);
@@ -74,8 +80,8 @@ export class VehicleLayer {
     this.scene.add(this.fill);
     this.scene.add(this.fill.target);
 
-    // Add subtle fog to match MapLibre atmosphere
-    this.scene.fog = new THREE.Fog(0xdce5ef, 200, 1500);
+    // Subtle atmospheric fog
+    this.scene.fog = new THREE.Fog(0xdce5ef, 200, 1600);
 
     // ── Textured Sky Hemisphere Dome ──────────────────────────────────────────
     try {
@@ -119,6 +125,89 @@ export class VehicleLayer {
     this.renderer.autoClear = false;
     this.renderer.shadowMap.enabled = false;
     this.renderer.state.reset();
+  }
+
+  /**
+   * Set Day / Night mode: 'day', 'sunset', 'night', or 'cycle'
+   */
+  setDayNightMode(mode) {
+    this.dayNightMode = mode;
+    this._updateDayNightLighting();
+  }
+
+  _updateDayNightLighting() {
+    let factor = 0;
+    if (this.dayNightMode === 'day') {
+      factor = 0;
+    } else if (this.dayNightMode === 'sunset') {
+      factor = 0.45;
+    } else if (this.dayNightMode === 'night') {
+      factor = 1.0;
+    } else if (this.dayNightMode === 'cycle') {
+      // 90 seconds full cycle: day -> dusk -> night -> dawn
+      const t = (performance.now() / 1000 / 90) % 1;
+      // 0..0.4 = day (factor 0), 0.4..0.5 = sunset (0->1), 0.5..0.9 = night (1), 0.9..1.0 = sunrise (1->0)
+      if (t < 0.4) {
+        factor = 0;
+      } else if (t < 0.5) {
+        factor = (t - 0.4) / 0.1;
+      } else if (t < 0.85) {
+        factor = 1.0;
+      } else {
+        factor = 1.0 - (t - 0.85) / 0.15;
+      }
+    }
+    this.nightFactor = factor;
+
+    if (!this.sun || !this.ambient || !this.fill) return;
+
+    if (factor < 0.3) {
+      // Daytime
+      this.sun.color.setHex(0xfff5e6);
+      this.sun.intensity = 2.2 * (1 - factor);
+      this.fill.color.setHex(0x90caf9);
+      this.fill.intensity = 0.9 * (1 - factor * 0.5);
+      this.ambient.color.setHex(0xffffff);
+      this.ambient.intensity = 1.4 - factor * 0.6;
+      if (this.scene.fog) this.scene.fog.color.setHex(0xdce5ef);
+      if (this.skyMesh) {
+        this.skyMesh.material.color.setHex(0xffffff);
+      }
+    } else if (factor < 0.7) {
+      // Golden Hour / Sunset Dusk
+      const blend = (factor - 0.3) / 0.4;
+      this.sun.color.setHex(0xff7722);
+      this.sun.intensity = 2.4 * (1 - blend * 0.5);
+      this.fill.color.setHex(0x8b5cf6);
+      this.fill.intensity = 0.8;
+      this.ambient.color.setHex(0xfdba74);
+      this.ambient.intensity = 0.9 - blend * 0.3;
+      if (this.scene.fog) this.scene.fog.color.setHex(0xd97757);
+      if (this.skyMesh) {
+        this.skyMesh.material.color.setHex(0xffaa77);
+      }
+    } else {
+      // Night (Cool moonlight & city atmosphere)
+      this.sun.color.setHex(0x93c5fd);
+      this.sun.intensity = 0.45;
+      this.fill.color.setHex(0x1e293b);
+      this.fill.intensity = 0.3;
+      this.ambient.color.setHex(0x0f172a);
+      this.ambient.intensity = 0.4;
+      if (this.scene.fog) this.scene.fog.color.setHex(0x0a0f1d);
+      if (this.skyMesh) {
+        this.skyMesh.material.color.setHex(0x223355);
+      }
+    }
+
+    if (this.propsManager) {
+      this.propsManager.setNightFactor(factor);
+    }
+
+    // Auto headlights at night or if user enabled
+    if (this._vehicleGroup?.userData?.setHeadlights) {
+      this._vehicleGroup.userData.setHeadlights(this._headlightsOn || factor > 0.35);
+    }
   }
 
   /** Switch vehicle type and rebuild mesh */
@@ -167,7 +256,7 @@ export class VehicleLayer {
   setHeadlights(enabled) {
     this._headlightsOn = enabled;
     if (this._vehicleGroup?.userData?.setHeadlights) {
-      this._vehicleGroup.userData.setHeadlights(enabled);
+      this._vehicleGroup.userData.setHeadlights(enabled || this.nightFactor > 0.35);
     }
   }
 
@@ -275,6 +364,11 @@ export class VehicleLayer {
 
     this._vehicleGroup.position.set(vx, vy, vz);
     this._vehicleGroup.rotation.y = (this._bearing * Math.PI) / 180;
+
+    // Advance dynamic day/night cycle
+    if (this.dayNightMode === 'cycle') {
+      this._updateDayNightLighting();
+    }
 
     // 6. Update sky and environment lights to follow the vehicle
     if (this.skyMesh) {

@@ -1,0 +1,11 @@
+{
+  "name": "layover-root",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "npm --prefix roam3d run dev",
+    "build": "npm --prefix roam3d run build",
+    "preview": "npm --prefix roam3d run preview",
+    "fetch-routes": "npm --prefix roam3d run fetch-routes"
+  }
+}

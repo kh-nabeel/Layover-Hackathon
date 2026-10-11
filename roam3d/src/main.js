@@ -15,7 +15,8 @@ import { CameraController } from './camera.js';
 import { LandmarkManager } from './landmarks.js';
 import {
   initProgressBar, updateHUD, markLandmarkVisited,
-  updateAutopilotBtn, updateCamBtn, updateVehicleBtn, updateChallengeTimer
+  updateAutopilotBtn, updateCamBtn, updateVehicleBtn, updateChallengeTimer,
+  updateDayNightBtn
 } from './hud.js';
 import { initLanding, showHUD, showFinish } from './landing.js';
 import { settings } from './settings.js';
@@ -277,7 +278,7 @@ function setup3DBuildings() {
 
   // 4. Real-World Scaled Road Surfaces & High-Resolution Textures
   try {
-    // A. Major Boulevards & Avenues (Champs-Élysées, Saint-Germain ~20m real width)
+    // A. Major Boulevards & Avenues (Champs-Élysées, Saint-Germain ~18-20m real width)
     if (!map.getLayer('roam3d-roads-primary')) {
       map.addLayer({
         id: 'roam3d-roads-primary',
@@ -287,7 +288,7 @@ function setup3DBuildings() {
         filter: ['in', 'class', 'motorway', 'trunk', 'primary'],
         layout: { 'line-join': 'round', 'line-cap': 'round' },
         paint: {
-          'line-color': '#181c22',
+          'line-color': '#21252d',
           'line-width': [
             'interpolate', ['linear'], ['zoom'],
             14, 3.5,
@@ -302,7 +303,7 @@ function setup3DBuildings() {
       }, buildingBeforeId);
     }
 
-    // B. Secondary Thoroughfares & City Streets (~13m real width)
+    // B. Secondary Thoroughfares & City Streets (~12-14m real width)
     if (!map.getLayer('roam3d-roads-secondary')) {
       map.addLayer({
         id: 'roam3d-roads-secondary',
@@ -312,7 +313,7 @@ function setup3DBuildings() {
         filter: ['in', 'class', 'secondary', 'tertiary'],
         layout: { 'line-join': 'round', 'line-cap': 'round' },
         paint: {
-          'line-color': '#1d2128',
+          'line-color': '#242932',
           'line-width': [
             'interpolate', ['linear'], ['zoom'],
             14, 2.5,
@@ -327,7 +328,7 @@ function setup3DBuildings() {
       }, buildingBeforeId);
     }
 
-    // C. Minor & Residential Parisian Rues (~8m real width)
+    // C. Minor & Residential Parisian Rues (~7-8m real width)
     if (!map.getLayer('roam3d-roads-minor')) {
       map.addLayer({
         id: 'roam3d-roads-minor',
@@ -337,7 +338,7 @@ function setup3DBuildings() {
         filter: ['!in', 'class', 'motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'rail'],
         layout: { 'line-join': 'round', 'line-cap': 'round' },
         paint: {
-          'line-color': '#20252d',
+          'line-color': '#282d36',
           'line-width': [
             'interpolate', ['linear'], ['zoom'],
             14, 1.5,
@@ -352,7 +353,7 @@ function setup3DBuildings() {
       }, buildingBeforeId);
     }
 
-    // D. White Dashed Center Lane Stripes on Boulevards
+    // D. White Dashed Center Lane Stripes (Crisp, subtle European road scale)
     if (!map.getLayer('roam3d-roads-lanes')) {
       map.addLayer({
         id: 'roam3d-roads-lanes',
@@ -361,17 +362,17 @@ function setup3DBuildings() {
         'source-layer': 'transportation',
         filter: ['in', 'class', 'motorway', 'trunk', 'primary', 'secondary'],
         paint: {
-          'line-color': '#ffffff',
+          'line-color': '#e2e8f0',
           'line-width': [
             'interpolate', ['linear'], ['zoom'],
-            16, 1.2,
-            17, 1.8,
-            18, 3.2,
-            19, 5.8,
-            20, 11.2,
+            16, 0.9,
+            17, 1.3,
+            18, 1.8,
+            19, 2.4,
+            20, 3.2,
           ],
-          'line-dasharray': [3, 4],
-          'line-opacity': 0.9,
+          'line-dasharray': [4, 8],
+          'line-opacity': 0.75,
         },
       }, buildingBeforeId);
     }
@@ -396,15 +397,15 @@ function setup3DBuildings() {
     console.warn('Road overlays notice:', e);
   }
 
-  // 5. 3D Buildings – Authentic window facades on walls + 3D AC outdoor unit caps on roofs
+  // 5. 3D Buildings – High-End Parisian Architectural Limestone Materials & Ambient Occlusion
   try {
-    // Window facade textures for building walls (towers get dark blue glass, mid-rise modern, classic Haussmann)
-    const buildingPatternExpression = [
+    const buildingColorExpression = [
       'case',
-      ['>', ['coalesce', ['get', 'render_height'], ['get', 'height'], 20], 28], 'facade-glass-blue',
-      ['>', ['coalesce', ['get', 'render_height'], ['get', 'height'], 20], 22], 'facade-city-modern',
-      ['==', ['%', ['coalesce', ['to-number', ['id']], 0], 2], 0], 'facade-haussmann',
-      'facade-haussmann-warm'
+      ['>', ['coalesce', ['get', 'render_height'], ['get', 'height'], 20], 35], '#2d4055', // High-rise slate glass
+      ['>', ['coalesce', ['get', 'render_height'], ['get', 'height'], 20], 25], '#ded5c5', // Classic Haussmann limestone
+      ['==', ['%', ['coalesce', ['to-number', ['id']], 0], 3], 0], '#ede4d4',             // Lutetian Pierre de Paris
+      ['==', ['%', ['coalesce', ['to-number', ['id']], 0], 3], 1], '#e3dacb',             // Warm sandstone
+      '#d9cfbf'                                                                            // Weathered ashlar masonry
     ];
 
     const existingExtrusionLayer = layers.find(
@@ -412,8 +413,8 @@ function setup3DBuildings() {
     );
 
     if (existingExtrusionLayer) {
-      map.setPaintProperty(existingExtrusionLayer.id, 'fill-extrusion-pattern', buildingPatternExpression);
-      map.setPaintProperty(existingExtrusionLayer.id, 'fill-extrusion-opacity', 1.0);
+      map.setPaintProperty(existingExtrusionLayer.id, 'fill-extrusion-color', buildingColorExpression);
+      map.setPaintProperty(existingExtrusionLayer.id, 'fill-extrusion-opacity', 0.98);
       map.setPaintProperty(existingExtrusionLayer.id, 'fill-extrusion-height', [
         'interpolate', ['linear'], ['zoom'],
         13.5, 0,
@@ -435,7 +436,7 @@ function setup3DBuildings() {
         'source-layer': 'building',
         minzoom: 13.5,
         paint: {
-          'fill-extrusion-pattern': buildingPatternExpression,
+          'fill-extrusion-color': buildingColorExpression,
           'fill-extrusion-height': [
             'interpolate', ['linear'], ['zoom'],
             13.5, 0,
@@ -446,12 +447,11 @@ function setup3DBuildings() {
             13.5, 0,
             14.5, ['coalesce', ['get', 'render_min_height'], ['get', 'min_height'], 0],
           ],
-          'fill-extrusion-opacity': 1.0,
+          'fill-extrusion-opacity': 0.98,
           'fill-extrusion-vertical-gradient': true,
         },
       }, beforeId);
     }
-
     // A single thin extrusion paints the roof surface above the facade layer.
     for (let zoom = 13; zoom <= 22; zoom++) {
       const obsoleteLayerId = `roam3d-rooftop-caps-z${zoom}`;
@@ -480,11 +480,21 @@ function setup3DBuildings() {
         },
       });
     }
-
-    // Clean up any old ground-level flat rooftop fill layer
     if (map.getLayer('roam3d-rooftops')) {
       try { map.removeLayer('roam3d-rooftops'); } catch (e) {}
     }
+
+    // Directional sunlight casting across 3D building facades
+    try {
+      if (typeof map.setLight === 'function') {
+        map.setLight({
+          anchor: 'map',
+          color: '#ffffff',
+          intensity: 0.55,
+          position: [1.5, 90, 50],
+        });
+      }
+    } catch (e) {}
   } catch (e) {
     console.warn('3D Buildings setup notice:', e);
   }
@@ -603,6 +613,7 @@ function startGame(vehicleType, autopilotMode, selectedMode = 'free-roam') {
     vehicleLayer.updateProps(`${prop}Enabled`, settings.get(`${prop}Enabled`), settings.state);
   });
   vehicleLayer.setHeadlights(settings.get('headlights'));
+  vehicleLayer.setDayNightMode(settings.get('dayNightMode') || 'day');
 
   // Landmarks
   landmarks = new LandmarkManager(map);
@@ -702,6 +713,36 @@ function startGame(vehicleType, autopilotMode, selectedMode = 'free-roam') {
     btnHeadlights.addEventListener('click', toggleHeadlights);
   }
 
+  // ─── Day & Night Cycle Controls ───────────────────────────────────────────
+  const DAY_NIGHT_MODES = ['day', 'sunset', 'night', 'cycle'];
+  let currentDayNightMode = settings.get('dayNightMode') || 'day';
+  const btnDayNight = document.getElementById('btn-daynight');
+  const selectDayNight = document.getElementById('setting-daynight-select');
+
+  function setDayNightMode(mode) {
+    currentDayNightMode = mode;
+    settings.set('dayNightMode', mode);
+    if (vehicleLayer) vehicleLayer.setDayNightMode(mode);
+    updateDayNightBtn(mode);
+    if (selectDayNight) selectDayNight.value = mode;
+  }
+
+  function cycleDayNightMode() {
+    const nextIdx = (DAY_NIGHT_MODES.indexOf(currentDayNightMode) + 1) % DAY_NIGHT_MODES.length;
+    setDayNightMode(DAY_NIGHT_MODES[nextIdx]);
+  }
+
+  if (btnDayNight) {
+    btnDayNight.addEventListener('click', cycleDayNightMode);
+  }
+  if (selectDayNight) {
+    selectDayNight.value = currentDayNightMode;
+    selectDayNight.addEventListener('change', (e) => {
+      setDayNightMode(e.target.value);
+    });
+  }
+  updateDayNightBtn(currentDayNightMode);
+
   // ─── Settings Modal Wiring ────────────────────────────────────────────────
   const settingsModal = document.getElementById('settings-modal');
   const btnSettings = document.getElementById('btn-settings');
@@ -757,6 +798,8 @@ function startGame(vehicleType, autopilotMode, selectedMode = 'free-roam') {
     }
     const sSens = document.getElementById('setting-steering-sens');
     if (sSens) { sSens.value = s.steeringSensitivity; document.getElementById('val-steering-sens').textContent = `${s.steeringSensitivity}x`; }
+    // Time of Day
+    if (selectDayNight) selectDayNight.value = s.dayNightMode || currentDayNightMode;
   }
   syncSettingsUI();
 
@@ -868,6 +911,9 @@ function startGame(vehicleType, autopilotMode, selectedMode = 'free-roam') {
     }
     if (e.code === 'KeyH') {
       toggleHeadlights();
+    }
+    if (e.code === 'KeyN') {
+      cycleDayNightMode();
     }
     if (e.code === 'KeyO') {
       if (settingsModal.style.display === 'flex') closeSettings();

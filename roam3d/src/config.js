@@ -98,6 +98,7 @@ export const DEFAULT_SETTINGS = {
   carMaxSpeed: 180,             // km/h
   steeringSensitivity: 0.5,     // multiplier (lowered for comfortable, smooth steering)
   headlights: true,
+  dayNightMode: 'day',
 };
 
 /** How close (metres) to trigger a landmark card */

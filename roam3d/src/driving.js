@@ -52,11 +52,23 @@ export class DrivingState {
 
   handleCollision() {
     if (this.collisionCooldown > 0) return false;
-    // Step back to last safe position
-    this.coord = [...this.lastSafeCoord];
-    // Rebound back with dampening
-    this.speedKmh = -this.speedKmh * 0.45;
-    this.collisionCooldown = 0.35; // cooldown seconds
+    const moveDir = this.speedKmh >= 0 ? 1 : -1;
+    const currentSpeedMag = Math.abs(this.speedKmh);
+
+    // Push back slightly away from the obstacle along reverse heading
+    const pushBackMeters = 1.8;
+    const headingRad = (this.bearing * Math.PI) / 180;
+    const dx = -moveDir * pushBackMeters * Math.sin(headingRad);
+    const dy = -moveDir * pushBackMeters * Math.cos(headingRad);
+    const lat = this.lastSafeCoord[1];
+    const dLng = dx / (111320 * Math.cos((lat * Math.PI) / 180));
+    const dLat = dy / 111320;
+    this.coord = [this.lastSafeCoord[0] + dLng, this.lastSafeCoord[1] + dLat];
+
+    // Rebound back with dampening and minimum bounce velocity for clean separation
+    const reboundSpeed = Math.max(8, currentSpeedMag * 0.45);
+    this.speedKmh = -moveDir * reboundSpeed;
+    this.collisionCooldown = 0.45; // cooldown seconds to allow clean separation
     this.hasCollided = true;
     return true;
   }

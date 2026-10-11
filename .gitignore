@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+
+# Production build outputs
+dist/
+dist-ssr/
+
+# Deployment & Vercel
+.vercel/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# OS files
+desktop.ini
+.DS_Store
+Thumbs.db
+
+# IDE & Editor files
+.vscode/
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo

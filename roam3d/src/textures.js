@@ -546,27 +546,28 @@ export function createRoadAsphaltTexture() {
   canvas.height = 256;
   const ctx = canvas.getContext('2d');
 
-  // Dark asphalt base
-  ctx.fillStyle = '#262930';
+  // Dark matte asphalt base
+  ctx.fillStyle = '#22262e';
   ctx.fillRect(0, 0, 256, 256);
 
-  // Subtle aggregate grain
-  for (let i = 0; i < 2000; i++) {
+  // Subtle natural stone aggregate grain
+  for (let i = 0; i < 1200; i++) {
     const x = Math.random() * 256;
     const y = Math.random() * 256;
-    ctx.fillStyle = Math.random() > 0.5 ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.15)';
-    ctx.fillRect(x, y, 1.5, 1.5);
+    ctx.fillStyle = Math.random() > 0.5 ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.12)';
+    ctx.fillRect(x, y, 1.2, 1.2);
   }
 
-  // White lane center line (dashed)
-  ctx.fillStyle = '#f8fafc';
-  ctx.fillRect(124, 30, 8, 80);
-  ctx.fillRect(124, 150, 8, 80);
+  // Refined, thin white center dash line (proper European road scale)
+  ctx.fillStyle = 'rgba(240, 244, 248, 0.85)';
+  ctx.fillRect(126, 20, 3, 60);
+  ctx.fillRect(126, 120, 3, 60);
+  ctx.fillRect(126, 220, 3, 60);
 
-  // Solid edge curb lines
-  ctx.fillStyle = '#e2e8f0';
-  ctx.fillRect(10, 0, 4, 256);
-  ctx.fillRect(242, 0, 4, 256);
+  // Delicate edge curb lines
+  ctx.fillStyle = 'rgba(200, 210, 220, 0.4)';
+  ctx.fillRect(6, 0, 2, 256);
+  ctx.fillRect(248, 0, 2, 256);
 
   return ctx.getImageData(0, 0, 256, 256);
 }
@@ -580,14 +581,14 @@ export function createZebraCrossingTexture() {
   canvas.height = 256;
   const ctx = canvas.getContext('2d');
 
-  // Asphalt ground
-  ctx.fillStyle = '#23272e';
+  // Smooth dark asphalt ground
+  ctx.fillStyle = '#21252d';
   ctx.fillRect(0, 0, 256, 256);
 
-  // Bold white thermoplastic zebra bars
-  ctx.fillStyle = '#ffffff';
-  for (let y = 16; y < 256; y += 48) {
-    ctx.fillRect(20, y, 216, 26);
+  // Clean, realistic thermoplastic zebra bars with subtle edge softness
+  ctx.fillStyle = 'rgba(245, 248, 250, 0.9)';
+  for (let y = 14; y < 256; y += 36) {
+    ctx.fillRect(32, y, 192, 14);
   }
 
   return ctx.getImageData(0, 0, 256, 256);
