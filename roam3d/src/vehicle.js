@@ -6,7 +6,9 @@
 import * as THREE from 'three';
 
 // Procedural drop shadow texture so vehicles are grounded on the asphalt
+let sharedShadowTexture = null;
 function createShadowTexture() {
+  if (sharedShadowTexture) return sharedShadowTexture;
   const canvas = document.createElement('canvas');
   canvas.width = 128;
   canvas.height = 128;
@@ -17,8 +19,8 @@ function createShadowTexture() {
   gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, 128, 128);
-  const texture = new THREE.CanvasTexture(canvas);
-  return texture;
+  sharedShadowTexture = new THREE.CanvasTexture(canvas);
+  return sharedShadowTexture;
 }
 
 /**
@@ -220,101 +222,96 @@ export function buildCar(color = 0x0284c7) {
   return group;
 }
 
-/**
- * Build an authentic Parisian bicycle with rider.
- * Forward is +Z, Roof is +Y.
- */
+/** Build a compact street motorcycle with rider. Forward is +Z, +Y is up. */
 export function buildBike(color = 0x10b981) {
   const group = new THREE.Group();
+  const paint = new THREE.MeshStandardMaterial({ color, roughness: 0.28, metalness: 0.55 });
+  const dark = new THREE.MeshStandardMaterial({ color: 0x17191d, roughness: 0.72, metalness: 0.18 });
+  const metal = new THREE.MeshStandardMaterial({ color: 0x9ba5ad, roughness: 0.25, metalness: 0.82 });
+  const rubber = new THREE.MeshStandardMaterial({ color: 0x101114, roughness: 0.92 });
+  const lamp = new THREE.MeshBasicMaterial({ color: 0xfff4ce });
+  const tail = new THREE.MeshBasicMaterial({ color: 0xff2525 });
 
-  const frameMat = new THREE.MeshStandardMaterial({
-    color,
-    roughness: 0.3,
-    metalness: 0.5,
-  });
-  const darkMat = new THREE.MeshStandardMaterial({
-    color: 0x18181b,
-    roughness: 0.8,
-  });
-  const chromeMat = new THREE.MeshStandardMaterial({
-    color: 0xe2e8f0,
-    roughness: 0.2,
-    metalness: 0.8,
-  });
-
-  // 1. Drop shadow
-  const shadowGeo = new THREE.PlaneGeometry(0.8, 2.4);
-  const shadowMat = new THREE.MeshBasicMaterial({
-    map: createShadowTexture(),
-    transparent: true,
-    opacity: 0.6,
-    depthWrite: false,
-  });
-  const shadow = new THREE.Mesh(shadowGeo, shadowMat);
+  const shadow = new THREE.Mesh(
+    new THREE.PlaneGeometry(1.1, 2.8),
+    new THREE.MeshBasicMaterial({ map: createShadowTexture(), transparent: true, opacity: 0.62, depthWrite: false })
+  );
   shadow.rotation.x = -Math.PI / 2;
-  shadow.position.set(0, 0.02, 0);
+  shadow.position.y = 0.02;
   group.add(shadow);
 
-  // Helper tube
-  function addTube(sx, sy, sz, ex, ey, ez, r = 0.035, mat = frameMat) {
-    const dx = ex - sx, dy = ey - sy, dz = ez - sz;
-    const len = Math.sqrt(dx * dx + dy * dy + dz * dz);
-    const geo = new THREE.CylinderGeometry(r, r, len, 8);
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.position.set((sx + ex) / 2, (sy + ey) / 2, (sz + ez) / 2);
-    mesh.lookAt(ex, ey, ez);
-    mesh.rotateX(Math.PI / 2);
+  const addBox = (w, h, d, material, x, y, z, rx = 0, rz = 0) => {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material);
+    mesh.position.set(x, y, z);
+    mesh.rotation.set(rx, 0, rz);
     group.add(mesh);
-  }
+    return mesh;
+  };
+  const addSphere = (rx, ry, rz, material, x, y, z) => {
+    const mesh = new THREE.Mesh(new THREE.SphereGeometry(1, 14, 10), material);
+    mesh.scale.set(rx, ry, rz);
+    mesh.position.set(x, y, z);
+    group.add(mesh);
+    return mesh;
+  };
+  const addBeam = (a, b, radius, material, segments = 8) => {
+    const start = new THREE.Vector3(...a);
+    const end = new THREE.Vector3(...b);
+    const direction = end.clone().sub(start);
+    const mesh = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, direction.length(), segments), material);
+    mesh.position.copy(start).add(end).multiplyScalar(0.5);
+    mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.normalize());
+    group.add(mesh);
+    return mesh;
+  };
 
-  // Frame (Forward is +Z)
-  // Bottom bracket at (0, 0.38, 0)
-  addTube(0, 0.38, 0, 0, 0.82, 0.65);       // Down tube to headset
-  addTube(0, 0.38, 0, 0, 0.95, -0.2);       // Seat tube
-  addTube(0, 0.95, -0.2, 0, 0.85, 0.65);    // Top tube
-  addTube(0, 0.38, 0, 0, 0.35, -0.75);      // Chainstay to rear wheel
-  addTube(0, 0.95, -0.2, 0, 0.35, -0.75);   // Seatstay to rear wheel
+  // Road tires and cast wheels (front at +Z).
+  const wheelGeo = new THREE.CylinderGeometry(0.37, 0.37, 0.16, 24);
+  const rimGeo = new THREE.CylinderGeometry(0.25, 0.25, 0.18, 20);
+  [0.76, -0.78].forEach((z) => {
+    const wheel = new THREE.Mesh(wheelGeo, rubber);
+    wheel.rotation.z = Math.PI / 2;
+    wheel.position.set(0, 0.39, z);
+    group.add(wheel);
+    const rim = new THREE.Mesh(rimGeo, metal);
+    rim.rotation.z = Math.PI / 2;
+    rim.position.set(0, 0.39, z);
+    group.add(rim);
+    const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.2, 12), dark);
+    hub.rotation.z = Math.PI / 2;
+    hub.position.set(0, 0.39, z);
+    group.add(hub);
+  });
 
-  // Front fork to front wheel (at +Z)
-  addTube(0, 0.85, 0.65, 0, 0.35, 0.75, 0.03, chromeMat);
+  // Compact frame, engine, fuel tank and low seat.
+  addBeam([0, 0.42, -0.72], [0, 0.7, 0.05], 0.055, paint);
+  addBeam([0, 0.42, 0.72], [0, 0.72, 0.05], 0.045, metal);
+  addBeam([0, 0.7, 0.05], [0, 0.94, -0.4], 0.045, paint);
+  addBox(0.42, 0.4, 0.44, dark, 0, 0.68, -0.05);
+  addSphere(0.32, 0.2, 0.45, paint, 0, 0.98, 0.08);
+  addBox(0.42, 0.12, 0.55, dark, 0, 1.0, -0.42, -0.08);
+  addBox(0.36, 0.16, 0.22, paint, 0, 0.82, -0.72, 0.12);
 
-  // Handlebars
-  addTube(-0.28, 0.95, 0.65, 0.28, 0.95, 0.65, 0.025, darkMat);
+  // Fork, handlebars, front lamp, front mudguard and rear exhaust.
+  [-0.12, 0.12].forEach((x) => {
+    addBeam([x, 0.4, 0.76], [x * 0.65, 1.12, 0.44], 0.035, metal);
+  });
+  addBeam([-0.3, 1.12, 0.43], [0.3, 1.12, 0.43], 0.035, dark);
+  addSphere(0.19, 0.16, 0.12, lamp, 0, 0.99, 0.53);
+  addBox(0.5, 0.045, 0.55, paint, 0, 0.83, 0.74, -0.05);
+  addBeam([0.18, 0.53, -0.46], [0.24, 0.57, -1.0], 0.07, metal);
+  addSphere(0.14, 0.08, 0.07, tail, 0, 0.95, -0.99);
 
-  // Saddle
-  const saddleGeo = new THREE.BoxGeometry(0.18, 0.06, 0.28);
-  const saddle = new THREE.Mesh(saddleGeo, darkMat);
-  saddle.position.set(0, 0.98, -0.2);
-  group.add(saddle);
+  // Rider leaning forward in a dark jacket and full-face helmet.
+  const rider = new THREE.MeshStandardMaterial({ color: 0x26364a, roughness: 0.8 });
+  addSphere(0.2, 0.31, 0.16, rider, 0, 1.28, -0.02);
+  addBeam([-0.11, 1.32, 0.02], [-0.25, 1.1, 0.4], 0.055, rider);
+  addBeam([0.11, 1.32, 0.02], [0.25, 1.1, 0.4], 0.055, rider);
+  addBeam([-0.1, 1.12, -0.05], [-0.17, 0.7, -0.38], 0.065, rider);
+  addBeam([0.1, 1.12, -0.05], [0.17, 0.7, -0.38], 0.065, rider);
+  addSphere(0.16, 0.16, 0.16, new THREE.MeshStandardMaterial({ color: 0xffc857, roughness: 0.3, metalness: 0.25 }), 0, 1.58, 0.2);
+  addBox(0.18, 0.06, 0.07, dark, 0, 1.57, 0.34);
 
-  // Wheels (Front at +Z, Rear at -Z)
-  const wheelGeo = new THREE.TorusGeometry(0.34, 0.038, 8, 20);
-  const frontWheel = new THREE.Mesh(wheelGeo, darkMat);
-  frontWheel.rotation.y = Math.PI / 2;
-  frontWheel.position.set(0, 0.35, 0.75);
-  group.add(frontWheel);
-
-  const rearWheel = new THREE.Mesh(wheelGeo, darkMat);
-  rearWheel.rotation.y = Math.PI / 2;
-  rearWheel.position.set(0, 0.35, -0.75);
-  group.add(rearWheel);
-
-  // Rider figure (casual commuter jacket + helmet)
-  const riderBody = new THREE.Mesh(
-    new THREE.BoxGeometry(0.28, 0.45, 0.25),
-    new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.7 })
-  );
-  riderBody.position.set(0, 1.25, 0.05);
-  riderBody.rotation.x = 0.38;
-  group.add(riderBody);
-
-  const riderHead = new THREE.Mesh(
-    new THREE.SphereGeometry(0.14, 12, 12),
-    new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.3 }) // yellow helmet
-  );
-  riderHead.position.set(0, 1.55, 0.22);
-  group.add(riderHead);
-
-  group.name = 'bike';
+  group.name = 'motorcycle';
   return group;
 }

@@ -550,6 +550,9 @@ export class PropsManager {
     this.scene.add(this.propsGroup);
 
     this.catalog = new SpatialCatalog(75);
+    this.routeTreePlacements = [];
+    this._treesInitialized = false;
+    this._treesPlacedCount = 0;
 
     // Reusable mesh pools
     this.pools = {
@@ -570,7 +573,7 @@ export class PropsManager {
     this.treesCount = 45;
     this.fireEnabled = true;
     this.fireCount = 15;
-    this.dividersEnabled = true;
+    this.dividersEnabled = false;
 
     this.lastVehicleX = -999999;
     this.lastVehicleZ = -999999;
@@ -667,9 +670,7 @@ export class PropsManager {
           // No street lights or road dividers inside green zones
         } else {
           // Outside green zones: urban street furniture only, NO trees
-          if (frac > 0.65) {
-            this.catalog.add({ type: 'streetLight', x: gx, z: gz, rotY: rot });
-          } else if (frac > 0.22) {
+          if (frac > 0.22) {
             // benches instead of trees in non-green urban grid
             if (frac > 0.35 && frac < 0.50) {
               this.catalog.add({ type: 'bench', x: gx, z: gz, rotY: rot });
@@ -691,26 +692,30 @@ export class PropsManager {
     const coords = routeLine.geometry.coordinates;
     if (coords.length < 2) return;
 
+    let routeDistanceM = 0;
+    let nextSampleM = 18;
     for (let i = 0; i < coords.length - 1; i++) {
       const p1 = coords[i];
       const p2 = coords[i + 1];
       const segDist = distanceMeters(p1, p2);
-      if (segDist < 1) continue;
+      if (segDist < 1) {
+        routeDistanceM += segDist;
+        continue;
+      }
 
       const bearing = bearingBetween(p1, p2);
       const rotRoad = (bearing * Math.PI) / 180;
-      const step = 20; // sample every 20 meters along sidewalk
-
-      for (let d = 0; d < segDist; d += step) {
+      while (nextSampleM <= routeDistanceM + segDist) {
+        const d = nextSampleM - routeDistanceM;
         const frac = d / segDist;
         const pt = [
           p1[0] + (p2[0] - p1[0]) * frac,
           p1[1] + (p2[1] - p1[1]) * frac,
         ];
 
-        // 7.5m offset for left and right sidewalks
-        const leftCoord = offsetLngLat(pt, bearing - 90, 7.8);
-        const rightCoord = offsetLngLat(pt, bearing + 90, 7.8);
+        // Keep props beyond the carriageway edge, including broad boulevards.
+        const leftCoord = offsetLngLat(pt, bearing - 90, 15.5);
+        const rightCoord = offsetLngLat(pt, bearing + 90, 15.5);
         const wL = lngLatToWorld(leftCoord[0], leftCoord[1]);
         const wR = lngLatToWorld(rightCoord[0], rightCoord[1]);
         const wC = lngLatToWorld(pt[0], pt[1]);
@@ -720,30 +725,31 @@ export class PropsManager {
         this.catalog.add({ type: 'streetLight', x: wR.x, z: wR.z, rotY: rotRoad - Math.PI / 2 });
 
         // Boulevard Trees: Placed ONLY in verified green satellite areas
-        if (Math.floor(d) % 40 === 0) {
+        if (Math.round(nextSampleM) % 80 < 32) {
           if (isInGreenZone(wL.x, wL.z) > 0) {
-            this.catalog.add({ type: 'tree', x: wL.x, z: wL.z + 1.2, rotY: Math.random() * Math.PI * 2 });
+            const tree = { type: 'tree', x: wL.x, z: wL.z + 1.2, rotY: rotRoad + 0.73 };
+            this.catalog.add(tree);
+            this.routeTreePlacements.push(tree);
           }
           if (isInGreenZone(wR.x, wR.z) > 0) {
-            this.catalog.add({ type: 'tree', x: wR.x, z: wR.z - 1.2, rotY: Math.random() * Math.PI * 2 });
+            const tree = { type: 'tree', x: wR.x, z: wR.z - 1.2, rotY: rotRoad + 2.11 };
+            this.catalog.add(tree);
+            this.routeTreePlacements.push(tree);
           }
         }
 
         // Sidewalk Benches
-        if (Math.floor(d) % 60 === 0) {
+        if (Math.round(nextSampleM) % 120 < 32) {
           this.catalog.add({ type: 'bench', x: wL.x, z: wL.z, rotY: rotRoad + Math.PI / 2 });
         }
 
-        // Center Median Dividers
-        if (Math.floor(d) % 30 === 0) {
-          this.catalog.add({ type: 'divider', x: wC.x, z: wC.z, rotY: rotRoad });
-        }
-
         // Fire Braziers along bridges and key corners
-        if (Math.floor(d) % 120 === 0) {
+        if (Math.round(nextSampleM) % 240 < 32) {
           this.catalog.add({ type: 'fire', x: wL.x, z: wL.z, rotY: 0 });
         }
+        nextSampleM += 32;
       }
+      routeDistanceM += segDist;
     }
 
     this._forceRefresh = true;
@@ -754,7 +760,7 @@ export class PropsManager {
     this._adjustPool('benches', buildBench, this.benchesCount);
     this._adjustPool('trees', buildTree, this.treesCount);
     this._adjustPool('fires', buildFireTorch, this.fireCount);
-    this._adjustPool('dividers', () => buildMedianDivider(22), 16);
+    this._adjustPool('dividers', () => buildMedianDivider(22), 0);
   }
 
   _adjustPool(name, factory, targetCount) {
@@ -800,8 +806,8 @@ export class PropsManager {
   }
 
   updateDividers(enabled) {
-    this.dividersEnabled = enabled;
-    this._adjustPool('dividers', () => buildMedianDivider(22), enabled ? 16 : 0);
+    this.dividersEnabled = false;
+    this._adjustPool('dividers', () => buildMedianDivider(22), 0);
     this._forceRefresh = true;
   }
 
@@ -811,6 +817,22 @@ export class PropsManager {
    * guaranteeing that props are 100% stationary and never follow the vehicle!
    */
   updateVehiclePosition(vx, vz) {
+    // Trees are assigned once to fixed route locations. Three.js handles camera
+    // frustum culling; moving the vehicle never recycles a tree onto a new spot.
+    if (this.routeTreePlacements.length && this._treesPlacedCount < this.pools.trees.length) {
+      const pool = this.pools.trees;
+      const placements = this.routeTreePlacements;
+      for (let i = this._treesPlacedCount; i < pool.length; i++) {
+        const index = Math.min(placements.length - 1, Math.floor(i * placements.length / pool.length));
+        const item = placements[index];
+        const mesh = pool[i];
+        mesh.position.set(item.x, 0, item.z);
+        mesh.rotation.y = item.rotY;
+        mesh.visible = this.treesEnabled && i < this.treesCount;
+      }
+      this._treesPlacedCount = pool.length;
+      this._treesInitialized = true;
+    }
     const distMoved = Math.hypot(vx - this.lastVehicleX, vz - this.lastVehicleZ);
     if (distMoved < 2.5 && !this._forceRefresh) {
       return;
@@ -834,6 +856,12 @@ export class PropsManager {
     this.flameObjects = [];
 
     types.forEach(({ key, type, enabled, max }) => {
+      if (key === 'trees') {
+        this.pools.trees.forEach((mesh, i) => {
+          mesh.visible = this._treesInitialized && enabled && i < max;
+        });
+        return;
+      }
       const pool = this.pools[key];
       if (!enabled || max <= 0) {
         pool.forEach(m => { m.visible = false; });

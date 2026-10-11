@@ -19,19 +19,15 @@ import {
 } from './hud.js';
 import { initLanding, showHUD, showFinish } from './landing.js';
 import { settings } from './settings.js';
+import { CheckpointTracker, RaceRivals } from './race.js';
 import {
   createHaussmannFacadeTexture,
   createDarkBlueGlassFacadeTexture,
   createCityModernFacadeTexture,
   createHaussmannWarmFacadeTexture,
   createRooftopTexture,
-  createRoadAsphaltTexture,
   createZebraCrossingTexture,
-  createPavementTexture,
-  createSatelliteRooftopTexture,
   createWaterRippleTexture,
-  createHighResAsphaltTexture,
-  createParisianPavementTileTexture,
   createSkyTexture
 } from './textures.js';
 
@@ -55,19 +51,28 @@ const loadingEl = document.getElementById('loading-overlay');
 const errorEl = document.getElementById('error-overlay');
 
 let mapInitialized = false;
+function setLoadingProgress(value) {
+  const fill = document.getElementById('loading-progress-fill');
+  const bar = fill?.parentElement;
+  if (fill) fill.style.width = `${value}%`;
+  if (bar) bar.setAttribute('aria-valuenow', String(value));
+}
+setLoadingProgress(5);
+
 function finishLoadingAndStart() {
   if (mapInitialized) return;
   mapInitialized = true;
   clearTimeout(tileLoadTimer);
-
-  if (loadingEl) {
-    loadingEl.style.opacity = '0';
+  setLoadingProgress(25);
+  onMapLoaded().then(() => {
+    setLoadingProgress(100);
     setTimeout(() => {
-      loadingEl.style.display = 'none';
-    }, 400);
-  }
-
-  onMapLoaded();
+      if (loadingEl) {
+        loadingEl.style.opacity = '0';
+        setTimeout(() => { loadingEl.style.display = 'none'; }, 400);
+      }
+    }, 250);
+  });
 }
 
 // 1. Primary: map load event
@@ -92,7 +97,9 @@ let camera = null;
 let landmarks = null;
 let gameRunning = false;
 let startTime = 0;
-let collisionTimeout = null;
+let gameMode = 'free-roam';
+let checkpoints = null;
+let raceRivals = null;
 
 // Challenge mode
 let challengeActive = false;
@@ -107,6 +114,7 @@ async function onMapLoaded() {
   } catch (err) {
     console.warn('setup3DBuildings notice:', err);
   }
+  setLoadingProgress(60);
 
   // ── Load route ────────────────────────────────────────────────────────
   try {
@@ -115,19 +123,38 @@ async function onMapLoaded() {
   } catch (err) {
     console.warn('Route load notice:', err);
   }
+  setLoadingProgress(88);
+  // Hold the opaque loader while initial building and raster tiles settle.
+  if (!map.loaded()) {
+    await new Promise((resolve) => {
+      let timeoutId;
+      const finish = () => {
+        clearTimeout(timeoutId);
+        map.off('idle', finish);
+        resolve();
+      };
+      timeoutId = setTimeout(finish, 3000);
+      map.once('idle', finish);
+    });
+  }
+  setLoadingProgress(96);
 
   // ── Landing screen ────────────────────────────────────────────────────
-  initLanding(({ vehicle, autopilot }) => {
-    startGame(vehicle, autopilot);
+  initLanding(({ vehicle, autopilot, mode }) => {
+    startGame(vehicle, autopilot, mode);
   });
 }
 
 // ─── Helper: Apply Building Render Distance ────────────────────────────────
 function applyBuildingRenderDistance(distMeters) {
-  const minz = Math.max(12.0, Math.min(15.0, 16.2 - (distMeters / 600)));
+  // Keep the base buildings visible at the game's starting zoom. Rooftop
+  // layers have their own zoom bands and must not be flattened to one range.
+  const minz = Math.max(12.0, Math.min(14.5, 16.2 - (distMeters / 600)));
   const style = map.getStyle();
   if (style && style.layers) {
-    const bLayers = style.layers.filter(l => l.type === 'fill-extrusion');
+    const bLayers = style.layers.filter(
+      l => l.type === 'fill-extrusion' && !l.id.startsWith('roam3d-rooftop-caps')
+    );
     bLayers.forEach(l => {
       try { map.setLayerZoomRange(l.id, minz, 24); } catch (e) {}
     });
@@ -147,42 +174,47 @@ function applyBuildingRenderDistance(distMeters) {
 
 // ─── 3D Buildings, Textures & Satellite Environment Setup ──────────────────
 function setup3DBuildings() {
+  const rooftopPatternAtZoom = (zoom) => [
+    'match', ['%', ['abs', ['to-number', ['id'], 0]], 4],
+    0, `roof-ac-units-0-z${zoom}`,
+    1, `roof-ac-units-1-z${zoom}`,
+    2, `roof-ac-units-2-z${zoom}`,
+    `roof-ac-units-3-z${zoom}`,
+  ];
   // 1. Register high-resolution procedural textures with real-world architectural scaling
   try {
     if (!map.hasImage('facade-glass-blue')) {
-      map.addImage('facade-glass-blue', createDarkBlueGlassFacadeTexture(), { pixelRatio: 10 });
+      map.addImage('facade-glass-blue', createDarkBlueGlassFacadeTexture(), { pixelRatio: 5 });
     }
     if (!map.hasImage('facade-city-modern')) {
-      map.addImage('facade-city-modern', createCityModernFacadeTexture(), { pixelRatio: 10 });
+      map.addImage('facade-city-modern', createCityModernFacadeTexture(), { pixelRatio: 5 });
     }
     if (!map.hasImage('facade-haussmann')) {
-      map.addImage('facade-haussmann', createHaussmannFacadeTexture(), { pixelRatio: 10 });
+      map.addImage('facade-haussmann', createHaussmannFacadeTexture(), { pixelRatio: 5 });
     }
     if (!map.hasImage('facade-haussmann-warm')) {
-      map.addImage('facade-haussmann-warm', createHaussmannWarmFacadeTexture(), { pixelRatio: 10 });
-    }
-    if (!map.hasImage('roof-satellite-paris')) {
-      // Authentic Paris aerial satellite rooftop photography texture
-      map.addImage('roof-satellite-paris', createSatelliteRooftopTexture(), { pixelRatio: 4 });
+      map.addImage('facade-haussmann-warm', createHaussmannWarmFacadeTexture(), { pixelRatio: 5 });
     }
     if (!map.hasImage('water-seine-ripples')) {
       // River Seine procedural water ripples & wave caustics texture
       map.addImage('water-seine-ripples', createWaterRippleTexture(), { pixelRatio: 2 });
     }
-    if (!map.hasImage('road-asphalt-hd')) {
-      // High-resolution asphalt texture with bitumen & mineral aggregate
-      map.addImage('road-asphalt-hd', createHighResAsphaltTexture(), { pixelRatio: 4 });
-    }
-    if (!map.hasImage('pavement-stone-hd')) {
-      // Authentic Parisian sandstone & granite stone footpath tiles
-      map.addImage('pavement-stone-hd', createParisianPavementTileTexture(), { pixelRatio: 4 });
-    }
     if (!map.hasImage('crosswalk-zebra')) {
       map.addImage('crosswalk-zebra', createZebraCrossingTexture(), { pixelRatio: 4 });
     }
-    if (!map.hasImage('roof-ac-units')) {
-      // AC outdoor unit top-down texture for building rooftops
-      map.addImage('roof-ac-units', createRooftopTexture(), { pixelRatio: 4 });
+    // Register seeded roof variants at each zoom level. Fill patterns are
+    // pixel-sized by MapLibre; changing pixelRatio by zoom keeps the AC units
+    // at a stable size relative to roof geometry as the map zooms.
+    const roofTextures = Array.from({ length: 4 }, (_, variant) => createRooftopTexture(variant));
+    const ROOF_BASE_ZOOM = 16;
+    for (let variant = 0; variant < roofTextures.length; variant++) {
+      for (let zoom = 13; zoom <= 22; zoom++) {
+        const imageId = `roof-ac-units-${variant}-z${zoom}`;
+        if (!map.hasImage(imageId)) {
+          const pixelRatio = 2 ** (ROOF_BASE_ZOOM - zoom);
+          map.addImage(imageId, roofTextures[variant], { pixelRatio });
+        }
+      }
     }
   } catch (err) {
     console.warn('Texture registration notice:', err);
@@ -265,11 +297,11 @@ function setup3DBuildings() {
           'line-width': [
             'interpolate', ['linear'], ['zoom'],
             14, 3.5,
-            16, 13,
-            17, 26,
-            18, 52,
-            19, 104,
-            20, 208,
+            16, 14,
+            17, 28,
+            18, 56,
+            19, 112,
+            20, 224,
           ],
           'line-opacity': 0.98,
         },
@@ -290,11 +322,11 @@ function setup3DBuildings() {
           'line-width': [
             'interpolate', ['linear'], ['zoom'],
             14, 2.5,
-            16, 8.5,
-            17, 17,
-            18, 34,
-            19, 68,
-            20, 136,
+            16, 9.5,
+            17, 19,
+            18, 38,
+            19, 74,
+            20, 148,
           ],
           'line-opacity': 0.96,
         },
@@ -315,11 +347,11 @@ function setup3DBuildings() {
           'line-width': [
             'interpolate', ['linear'], ['zoom'],
             14, 1.5,
-            16, 5,
-            17, 10,
-            18, 20,
-            19, 41,
-            20, 82,
+            16, 5.5,
+            17, 11,
+            18, 22,
+            19, 44,
+            20, 88,
           ],
           'line-opacity': 0.94,
         },
@@ -350,47 +382,18 @@ function setup3DBuildings() {
       }, buildingBeforeId);
     }
 
-    // E. 3D Projected Raised Road Median Divider on Main Boulevards
-    if (!map.getLayer('roam3d-roads-divider-3d')) {
+    // Zebra markings on pedestrian crossings included in the road vector data.
+    if (!map.getLayer('roam3d-zebra-crossings')) {
       map.addLayer({
-        id: 'roam3d-roads-divider-3d',
+        id: 'roam3d-zebra-crossings',
         type: 'line',
         source: 'openmaptiles',
         'source-layer': 'transportation',
-        filter: ['in', 'class', 'motorway', 'trunk', 'primary'],
+        filter: ['any', ['==', ['get', 'subclass'], 'crossing'], ['==', ['get', 'class'], 'crossing']],
+        layout: { 'line-cap': 'butt', 'line-join': 'miter' },
         paint: {
-          'line-color': '#e2e8f0', // Raised concrete divider curb
-          'line-width': [
-            'interpolate', ['linear'], ['zoom'],
-            15, 1.6,
-            17, 3.8,
-            18, 7.5,
-            19, 15.0,
-            20, 30.0,
-          ],
-          'line-opacity': 0.98,
-        },
-      }, buildingBeforeId);
-    }
-
-    // F. Parisian Sidewalk Footpath Stone Tile Texture
-    if (!map.getLayer('roam3d-pavements')) {
-      map.addLayer({
-        id: 'roam3d-pavements',
-        type: 'line',
-        source: 'openmaptiles',
-        'source-layer': 'transportation',
-        filter: ['in', 'class', 'path', 'pedestrian', 'footway'],
-        paint: {
-          'line-pattern': 'pavement-stone-hd',
-          'line-width': [
-            'interpolate', ['linear'], ['zoom'],
-            15, 3.0,
-            17, 6.0,
-            18, 12.0,
-            19, 24.0,
-            20, 48.0,
-          ],
+          'line-pattern': 'crosswalk-zebra',
+          'line-width': ['interpolate', ['linear'], ['zoom'], 15, 2, 17, 4, 19, 7],
           'line-opacity': 0.95,
         },
       }, buildingBeforeId);
@@ -458,16 +461,24 @@ function setup3DBuildings() {
     // Dedicated 3D Rooftop Cap layer: Renders the AC outdoor unit texture directly on the roofs
     // Base is 0.2m below roof height, so the top face displays the AC unit texture
     // without repeating it down the sides of the buildings!
-    if (!map.getLayer('roam3d-rooftop-caps')) {
-      const labelLayer = layers.find(l => l.type === 'symbol');
+    if (map.getLayer('roam3d-rooftop-caps')) {
+      map.removeLayer('roam3d-rooftop-caps');
+    }
+    for (let zoom = 13; zoom <= 22; zoom++) {
+      const layerId = `roam3d-rooftop-caps-z${zoom}`;
+      if (map.getLayer(layerId)) continue;
       map.addLayer({
-        id: 'roam3d-rooftop-caps',
+        id: layerId,
         type: 'fill-extrusion',
         source: 'openmaptiles',
         'source-layer': 'building',
-        minzoom: 13.5,
+        minzoom: zoom,
+        maxzoom: zoom + 1,
         paint: {
-          'fill-extrusion-pattern': 'roof-ac-units',
+          // The active zoom band selects one pre-sized pattern. Using separate
+          // layers avoids mixing camera and feature expressions, which some
+          // MapLibre versions reject for resolved image properties.
+          'fill-extrusion-pattern': rooftopPatternAtZoom(zoom),
           'fill-extrusion-height': [
             'interpolate', ['linear'], ['zoom'],
             13.5, 0,
@@ -480,7 +491,7 @@ function setup3DBuildings() {
           ],
           'fill-extrusion-opacity': 0.98,
         },
-      }, labelLayer ? labelLayer.id : undefined);
+      });
     }
 
     // Clean up any old ground-level flat rooftop fill layer
@@ -572,16 +583,19 @@ function drawRouteOnMap() {
 }
 
 // ─── Start Game ────────────────────────────────────────────────────────────
-function startGame(vehicleType, autopilotMode) {
+function startGame(vehicleType, autopilotMode, selectedMode = 'free-roam') {
   showHUD();
   gameRunning = true;
   startTime = performance.now();
+  gameMode = selectedMode;
+  checkpoints = new CheckpointTracker();
 
   // Driving state
   driving = new DrivingState();
   driving.vehicleType = vehicleType;
   driving.autopilot = autopilotMode;
   driving.accelerationMultiplier = (settings.get('carAcceleration') || 14) / 14;
+  driving.carMaxSpeed = settings.get('carMaxSpeed') || VEHICLES.car.maxSpeed;
   driving.steeringSensitivity = settings.get('steeringSensitivity') ?? 0.5;
 
   // Camera
@@ -608,11 +622,22 @@ function startGame(vehicleType, autopilotMode) {
   landmarks.onVisit((lm, count) => {
     const idx = LANDMARKS.findIndex(l => l.id === lm.id);
     markLandmarkVisited(idx);
-    if (landmarks.isAllVisited()) {
-      // slight delay so last card is visible
-      setTimeout(() => endGame(), 3000);
-    }
   });
+
+  if (gameMode === 'race') raceRivals = new RaceRivals(vehicleLayer, vehicleType);
+  const challengeButton = document.getElementById('btn-challenge');
+  if (challengeButton) challengeButton.style.display = 'none';
+  const timerEl = document.getElementById('challenge-timer');
+  if (gameMode === 'time-attack') {
+    challengeTimeLeft = CHALLENGE_DURATION;
+    timerEl.style.display = 'flex';
+    updateChallengeTimer(challengeTimeLeft);
+    challengeInterval = setInterval(() => {
+      challengeTimeLeft--;
+      updateChallengeTimer(challengeTimeLeft);
+      if (challengeTimeLeft <= 0) endGame();
+    }, 1000);
+  }
 
   // Init progress bar
   initProgressBar();
@@ -738,6 +763,11 @@ function startGame(vehicleType, autopilotMode) {
     // Accel & Steering
     const cAccel = document.getElementById('setting-car-accel');
     if (cAccel) { cAccel.value = s.carAcceleration; document.getElementById('val-car-accel').textContent = `${s.carAcceleration} m/s²`; }
+    const carMaxSpeed = document.getElementById('setting-car-max-speed');
+    if (carMaxSpeed) {
+      carMaxSpeed.value = s.carMaxSpeed;
+      document.getElementById('val-car-max-speed').textContent = `${s.carMaxSpeed} km/h`;
+    }
     const sSens = document.getElementById('setting-steering-sens');
     if (sSens) { sSens.value = s.steeringSensitivity; document.getElementById('val-steering-sens').textContent = `${s.steeringSensitivity}x`; }
   }
@@ -800,6 +830,13 @@ function startGame(vehicleType, autopilotMode) {
     document.getElementById('val-car-accel').textContent = `${val} m/s²`;
     settings.set('carAcceleration', val);
     driving.accelerationMultiplier = val / 14;
+  });
+
+  document.getElementById('setting-car-max-speed')?.addEventListener('input', (e) => {
+    const val = parseInt(e.target.value, 10);
+    document.getElementById('val-car-max-speed').textContent = `${val} km/h`;
+    settings.set('carMaxSpeed', val);
+    driving.carMaxSpeed = val;
   });
 
   document.getElementById('setting-steering-sens')?.addEventListener('input', (e) => {
@@ -910,17 +947,6 @@ function startGame(vehicleType, autopilotMode) {
     driving.paused = document.hidden;
   });
 
-  // Collision Impact Flash Visual Effect
-  function triggerCollisionImpact() {
-    const overlay = document.getElementById('collision-overlay');
-    if (!overlay) return;
-    overlay.classList.add('active');
-    if (collisionTimeout) clearTimeout(collisionTimeout);
-    collisionTimeout = setTimeout(() => {
-      overlay.classList.remove('active');
-    }, 400);
-  }
-
   // ─── Start Game Loop ──────────────────────────────────────────────────────
   let lastTs = performance.now();
   function loop(ts) {
@@ -932,31 +958,7 @@ function startGame(vehicleType, autopilotMode) {
       const result = driving.tick(dt);
       if (result) {
         // ─── 3D Building Collision Detection ────────────────────────────────
-        if (!driving.autopilot && Math.abs(result.speedKmh) > 1.2) {
-          try {
-            const screenPt = map.project(result.lngLat);
-            const bbox = [
-              [screenPt.x - 4, screenPt.y - 4],
-              [screenPt.x + 4, screenPt.y + 4]
-            ];
-            const bldLayer = map.getLayer('building-3d') ? 'building-3d' : (map.getLayer('roam3d-buildings') ? 'roam3d-buildings' : null);
-            const hits = bldLayer ? map.queryRenderedFeatures(bbox, {
-              layers: [bldLayer]
-            }) : [];
-            if (hits && hits.length > 0) {
-              const bounced = driving.handleCollision();
-              if (bounced) {
-                triggerCollisionImpact();
-              }
-            } else {
-              driving.lastSafeCoord = [...result.lngLat];
-            }
-          } catch (e) {
-            driving.lastSafeCoord = [...result.lngLat];
-          }
-        } else {
-          driving.lastSafeCoord = [...result.lngLat];
-        }
+        // Building collision checks are disabled for the hackathon demo.
 
         // Update vehicle layer position and front wheel steering
         vehicleLayer.setPosition(result.lngLat, result.bearing);
@@ -968,20 +970,23 @@ function startGame(vehicleType, autopilotMode) {
         // Check landmarks
         landmarks.check(result.lngLat);
 
-        // Compute next landmark
-        const landmarkPts = getLandmarkPoints();
-        const nextPt = landmarkPts.find(p => {
-          const lm = LANDMARKS[landmarkPts.indexOf(p)];
-          return lm && !landmarks.visited.has(lm.id);
-        });
-        const nextLm = LANDMARKS.find(lm => !landmarks.visited.has(lm.id));
+        if (gameMode !== 'free-roam' && checkpoints.update(result.lngLat) && checkpoints.complete) {
+          endGame();
+        }
+        if (gameMode === 'race' && raceRivals?.update(dt)) {
+          endGame();
+        }
+
+        const nextLm = gameMode !== 'free-roam'
+          ? checkpoints.next
+          : LANDMARKS.find(lm => !landmarks.visited.has(lm.id));
         const distToNext = nextLm
           ? haversineM(result.lngLat, nextLm.coord)
           : 0;
 
         updateHUD(result, nextLm, distToNext);
 
-        if (driving.finished && !landmarks.isAllVisited()) {
+        if (driving.finished && gameMode !== 'free-roam') {
           endGame();
         }
       }
@@ -999,10 +1004,16 @@ function startGame(vehicleType, autopilotMode) {
 
 // ─── End Game ─────────────────────────────────────────────────────────────
 function endGame() {
+  if (!gameRunning) return;
   gameRunning = false;
   if (challengeInterval) clearInterval(challengeInterval);
+  const timerEl = document.getElementById('challenge-timer');
+  if (timerEl) timerEl.style.display = 'none';
+  raceRivals?.destroy();
+  raceRivals = null;
   const elapsed = (performance.now() - startTime) / 1000;
-  showFinish(landmarks.getVisitedCount(), elapsed);
+  const count = gameMode === 'free-roam' ? landmarks.getVisitedCount() : checkpoints.index;
+  showFinish(count, elapsed, gameMode);
 }
 
 // ─── Challenge Mode ────────────────────────────────────────────────────────

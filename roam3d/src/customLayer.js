@@ -42,6 +42,7 @@ export class VehicleLayer {
     this._vehicleGroup = null;
     this._vehicleType = 'car';
     this._headlightsOn = true;
+    this._rivalGroups = [];
 
     // Current world position (Mercator)
     this._mercPos = null;
@@ -113,7 +114,7 @@ export class VehicleLayer {
     this.renderer = new THREE.WebGLRenderer({
       canvas: map.getCanvas(),
       context: gl,
-      antialias: true,
+      antialias: false,
     });
     this.renderer.autoClear = false;
     this.renderer.shadowMap.enabled = false;
@@ -125,6 +126,42 @@ export class VehicleLayer {
     if (this._vehicleType === type && this._vehicleGroup) return;
     this._vehicleType = type;
     this._buildVehicle(type);
+  }
+
+  setRivalVehicles(rivals) {
+    this.clearRivalVehicles();
+    rivals.forEach(({ color }) => {
+      const vehicle = buildCar(color);
+      vehicle.userData.setHeadlights?.(false);
+      this.scene.add(vehicle);
+      this._rivalGroups.push(vehicle);
+    });
+  }
+
+  setRivalPositions(rivals) {
+    rivals.forEach(({ coord, bearing }, index) => {
+      const group = this._rivalGroups[index];
+      if (!group) return;
+      const merc = MercatorCoordinate.fromLngLat({ lng: coord[0], lat: coord[1] }, this._altOffset);
+      group.position.set(
+        (merc.x - PARIS_ANCHOR_MERC.x) / PARIS_METER_SCALE,
+        this._altOffset,
+        -(merc.y - PARIS_ANCHOR_MERC.y) / PARIS_METER_SCALE
+      );
+      group.rotation.y = (bearing * Math.PI) / 180;
+    });
+  }
+
+  clearRivalVehicles() {
+    this._rivalGroups.forEach((group) => {
+      this.scene?.remove(group);
+      group.traverse((object) => {
+        object.geometry?.dispose();
+        if (Array.isArray(object.material)) object.material.forEach((material) => material.dispose());
+        else object.material?.dispose();
+      });
+    });
+    this._rivalGroups = [];
   }
 
   setHeadlights(enabled) {
@@ -260,10 +297,10 @@ export class VehicleLayer {
     gl.depthFunc(gl.LEQUAL);
     this.renderer.state.reset();
     this.renderer.render(this.scene, this.camera);
-    this.map.triggerRepaint();
   }
 
   onRemove() {
+    this.clearRivalVehicles();
     if (this._vehicleGroup) {
       this.scene?.remove(this._vehicleGroup);
     }

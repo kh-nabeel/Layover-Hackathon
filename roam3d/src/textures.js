@@ -393,41 +393,51 @@ export function createHaussmannWarmFacadeTexture() {
  * - Unit branding color stripe
  * Multiple units arranged on a flat grey membrane roof.
  */
-export function createRooftopTexture() {
+export function createRooftopTexture(variant = 0) {
   const canvas = document.createElement('canvas');
   canvas.width = 256;
   canvas.height = 256;
   const ctx = canvas.getContext('2d');
+  // A seeded generator keeps rooftop details identical across map reloads and
+  // camera movement while allowing distinct, repeatable building variants.
+  let seed = (0x4f1bbcdc + Math.max(0, variant | 0) * 0x6d2b79f5) >>> 0;
+  const random = () => {
+    seed = (seed + 0x6d2b79f5) >>> 0;
+    let value = seed;
+    value = Math.imul(value ^ (value >>> 15), value | 1);
+    value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+    return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+  };
 
   // Base flat membrane / bitumen roof (very dark grey)
   ctx.fillStyle = '#2d3340';
   ctx.fillRect(0, 0, 256, 256);
 
   // Subtle gravel texture
-  for (let i = 0; i < 1200; i++) {
-    const x = Math.random() * 256;
-    const y = Math.random() * 256;
-    const gray = Math.floor(Math.random() * 30 + 35);
+  for (let i = 0; i < 400; i++) {
+    const x = random() * 256;
+    const y = random() * 256;
+    const gray = Math.floor(random() * 30 + 35);
     ctx.fillStyle = `rgb(${gray},${gray+2},${gray+4})`;
     ctx.fillRect(x, y, 1.5, 1.5);
   }
 
   // Helper: Draw one AC outdoor unit (top-down view)
-  function drawACUnit(ux, uy, unitW, unitH, rotation) {
+  function drawACUnit(ux, uy, unitW, unitH, rotation, finish, stripe) {
     ctx.save();
     ctx.translate(ux + unitW / 2, uy + unitH / 2);
     ctx.rotate(rotation || 0);
     ctx.translate(-unitW / 2, -unitH / 2);
 
     // Unit body — off-white / beige casing
-    ctx.fillStyle = '#c8cdd4';
+    ctx.fillStyle = finish;
     ctx.fillRect(0, 0, unitW, unitH);
     ctx.strokeStyle = '#8a919e';
     ctx.lineWidth = 1.5;
     ctx.strokeRect(0, 0, unitW, unitH);
 
     // Brand color stripe at top of unit
-    ctx.fillStyle = '#2563eb';
+    ctx.fillStyle = stripe;
     ctx.fillRect(0, 0, unitW, 5);
 
     // Fan grille area
@@ -495,18 +505,26 @@ export function createRooftopTexture() {
     ctx.restore();
   }
 
-  // Place multiple AC units
-  drawACUnit(20, 30, 70, 45, 0);
-  drawACUnit(20, 82, 70, 45, 0);
-  drawACUnit(110, 20, 55, 38, 0);
-  drawACUnit(175, 20, 55, 38, 0);
-  drawACUnit(140, 100, 60, 40, Math.PI / 2);
-  drawACUnit(30, 160, 65, 42, 0);
-  drawACUnit(110, 155, 55, 38, Math.PI);
-  drawACUnit(175, 150, 55, 38, 0);
-  drawACUnit(30, 210, 55, 35, Math.PI / 2);
-  drawACUnit(120, 210, 55, 35, 0);
-  drawACUnit(185, 210, 55, 35, Math.PI);
+  // Slightly vary unit dimensions, casing finishes and accent colors by roof.
+  const scale = [0.82, 0.94, 1.08, 1.20][Math.max(0, variant | 0) % 4];
+  const finishes = ['#d2d4d1', '#c4cbd0', '#ded8ca', '#b9c1c6'];
+  const stripes = ['#426a9a', '#a85d3b', '#407b72', '#8f564b'];
+  const unitSpecs = [
+    [20, 30, 70, 45, 0], [20, 82, 70, 45, 0], [110, 20, 55, 38, 0],
+    [175, 20, 55, 38, 0], [140, 100, 60, 40, Math.PI / 2], [30, 160, 65, 42, 0],
+    [110, 155, 55, 38, Math.PI], [175, 150, 55, 38, 0], [30, 210, 55, 35, Math.PI / 2],
+    [120, 210, 55, 35, 0], [185, 210, 55, 35, Math.PI],
+  ];
+  unitSpecs.forEach(([x, y, w, h, rotation], index) => {
+    const unitScale = scale * (0.88 + random() * 0.24);
+    const unitW = w * unitScale;
+    const unitH = h * unitScale;
+    const jitterX = (random() - 0.5) * 7;
+    const jitterY = (random() - 0.5) * 7;
+    drawACUnit(x + jitterX, y + jitterY, unitW, unitH, rotation,
+      finishes[(index + (variant | 0)) % finishes.length],
+      stripes[(index * 3 + (variant | 0)) % stripes.length]);
+  });
 
   // Roof drainage hatch
   ctx.fillStyle = '#1a1f2b';

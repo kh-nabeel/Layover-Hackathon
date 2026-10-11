@@ -92,6 +92,22 @@ html, body {
   font-size: 0.78rem; color: var(--c-dim);
   letter-spacing: 0.04em;
 }
+.loading-progress {
+  width: min(260px, 62vw);
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.18);
+}
+.loading-progress span {
+  display: block;
+  width: 0%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #72d6ff, #b8f2ff);
+  box-shadow: 0 0 12px rgba(114,214,255,0.65);
+  transition: width 0.45s ease;
+}
 
 /* ─── Error Overlay ─────────────────────────────────────── */
 #error-overlay {
@@ -317,6 +333,34 @@ html, body {
   background: rgba(255,255,255,0.09);
   color: var(--c-white);
   box-shadow: 0 0 24px rgba(255,255,255,0.07);
+}
+
+.mode-choice {
+  width: min(100%, 560px);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.mode-btn {
+  min-height: 72px;
+  padding: 11px 9px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  color: var(--c-dim);
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-lg);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.mode-btn strong { color: var(--c-white); font-size: 0.75rem; }
+.mode-btn span { color: var(--c-dim-2); font-size: 0.62rem; line-height: 1.35; }
+.mode-btn.active { border-color: rgba(255,255,255,0.48); background: rgba(255,255,255,0.12); }
+@media (max-width: 520px) {
+  .mode-choice { grid-template-columns: 1fr; }
+  .mode-btn { min-height: 56px; }
 }
 
 /* Landing actions */

@@ -14,6 +14,7 @@ export const MAP_INIT = {
   pitch: 60,
   maxPitch: 85,
   bearing: 0,
+  antialias: false,
 };
 
 /** Landmark definitions (all facts verified from the prompt) */
@@ -67,33 +68,34 @@ export const VEHICLES = {
   car: {
     label: 'Car',
     icon: '🚗',
-    maxSpeed: 110,   // km/h (increased for high responsiveness)
-    turboSpeed: 175,  // km/h
+    maxSpeed: 180,
+    turboSpeed: 240,
     acceleration: 14, // m/s^2
     braking: 18,
   },
   bike: {
-    label: 'Bike',
+    label: 'Motorcycle',
     icon: '🚲',
-    maxSpeed: 35,
-    turboSpeed: 75,
-    acceleration: 6,
-    braking: 10,
+    maxSpeed: 90,
+    turboSpeed: 130,
+    acceleration: 9,
+    braking: 13,
   },
 };
 
 /** Default environment, props, and gameplay settings */
 export const DEFAULT_SETTINGS = {
   streetLightsEnabled: true,
-  streetLightsCount: 40,
+  streetLightsCount: 32,
   benchesEnabled: true,
   benchesCount: 20,
   treesEnabled: true,
-  treesCount: 45,
+  treesCount: 32,
   fireEnabled: true,
   fireCount: 15,
-  buildingRenderDistance: 1500, // metres
+  buildingRenderDistance: 1000, // metres
   carAcceleration: 14,          // m/s^2
+  carMaxSpeed: 180,             // km/h
   steeringSensitivity: 0.5,     // multiplier (lowered for comfortable, smooth steering)
   headlights: true,
 };

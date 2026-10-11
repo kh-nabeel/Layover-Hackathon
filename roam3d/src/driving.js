@@ -27,6 +27,7 @@ export class DrivingState {
     // Dynamics settings multipliers
     this.accelerationMultiplier = 1.0;
     this.steeringSensitivity = 0.5;
+    this.carMaxSpeed = VEHICLES.car.maxSpeed;
 
     // Collision state
     this.lastSafeCoord = [2.29348, 48.859039];
@@ -122,9 +123,12 @@ export class DrivingState {
     this.isUserDriving = this._keys.forward || this._keys.back || this._keys.left || this._keys.right;
 
     const spec = VEHICLES[this.vehicleType] || VEHICLES.car;
-    const maxSpeed = this.turbo ? spec.turboSpeed : spec.maxSpeed;
+    const configuredMax = this.vehicleType === 'car' ? this.carMaxSpeed : spec.maxSpeed;
+    const maxSpeed = this.turbo
+      ? (this.vehicleType === 'car' ? Math.max(configuredMax, Math.round(configuredMax * 1.33)) : spec.turboSpeed)
+      : configuredMax;
     const maxReverse = -25;
-    const wheelbase = this.vehicleType === 'car' ? 2.7 : 1.2;
+    const wheelbase = this.vehicleType === 'car' ? 2.7 : 1.4;
 
     if (!this.paused) {
       if (this.autopilot) {

@@ -88,8 +88,8 @@ export function updateCamBtn(mode) {
 export function updateVehicleBtn(type) {
   const btn = document.getElementById('btn-vehicle-switch');
   const carIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><path d="M5 17H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2l2-3h10l2 3h2a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-2"/><circle cx="7.5" cy="17" r="2.5"/><circle cx="16.5" cy="17" r="2.5"/></svg>`;
-  const bikeIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 6a1 1 0 0 0-1-1h-4"/><path d="m5.5 14 4.5-9 3 4 2-4h4"/></svg>`;
-  const label = type === 'car' ? 'Car' : 'Bike';
+  const bikeIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><circle cx="5" cy="17" r="3"/><circle cx="19" cy="17" r="3"/><path d="M5 17l4-7h5l5 7M9 10l-2-3h3m2 3 2-3h3M9 13h6"/></svg>`;
+  const label = type === 'car' ? 'Car' : 'Motorcycle';
   btn.innerHTML = `${type === 'car' ? carIcon : bikeIcon}<span>${label}</span>`;
 }
 
