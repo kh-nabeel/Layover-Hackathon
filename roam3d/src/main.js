@@ -174,12 +174,12 @@ function applyBuildingRenderDistance(distMeters) {
 
 // ─── 3D Buildings, Textures & Satellite Environment Setup ──────────────────
 function setup3DBuildings() {
-  const rooftopPatternAtZoom = (zoom) => [
+  const rooftopPatternExpression = [
     'match', ['%', ['abs', ['to-number', ['id'], 0]], 4],
-    0, `roof-ac-units-0-z${zoom}`,
-    1, `roof-ac-units-1-z${zoom}`,
-    2, `roof-ac-units-2-z${zoom}`,
-    `roof-ac-units-3-z${zoom}`,
+    0, 'roof-ac-units-0',
+    1, 'roof-ac-units-1',
+    2, 'roof-ac-units-2',
+    'roof-ac-units-3',
   ];
   // 1. Register high-resolution procedural textures with real-world architectural scaling
   try {
@@ -202,18 +202,12 @@ function setup3DBuildings() {
     if (!map.hasImage('crosswalk-zebra')) {
       map.addImage('crosswalk-zebra', createZebraCrossingTexture(), { pixelRatio: 4 });
     }
-    // Register seeded roof variants at each zoom level. Fill patterns are
-    // pixel-sized by MapLibre; changing pixelRatio by zoom keeps the AC units
-    // at a stable size relative to roof geometry as the map zooms.
-    const roofTextures = Array.from({ length: 4 }, (_, variant) => createRooftopTexture(variant));
-    const ROOF_BASE_ZOOM = 16;
-    for (let variant = 0; variant < roofTextures.length; variant++) {
-      for (let zoom = 13; zoom <= 22; zoom++) {
-        const imageId = `roof-ac-units-${variant}-z${zoom}`;
-        if (!map.hasImage(imageId)) {
-          const pixelRatio = 2 ** (ROOF_BASE_ZOOM - zoom);
-          map.addImage(imageId, roofTextures[variant], { pixelRatio });
-        }
+    // One set of seeded patterns is shared by a single roof overlay layer.
+    // Multiple extrusion layers per zoom caused excessive overdraw.
+    for (let variant = 0; variant < 4; variant++) {
+      const imageId = `roof-ac-units-${variant}`;
+      if (!map.hasImage(imageId)) {
+        map.addImage(imageId, createRooftopTexture(variant), { pixelRatio: 2 });
       }
     }
   } catch (err) {
@@ -458,27 +452,20 @@ function setup3DBuildings() {
       }, beforeId);
     }
 
-    // Dedicated 3D Rooftop Cap layer: Renders the AC outdoor unit texture directly on the roofs
-    // Base is 0.2m below roof height, so the top face displays the AC unit texture
-    // without repeating it down the sides of the buildings!
-    if (map.getLayer('roam3d-rooftop-caps')) {
-      map.removeLayer('roam3d-rooftop-caps');
-    }
+    // A single thin extrusion paints the roof surface above the facade layer.
     for (let zoom = 13; zoom <= 22; zoom++) {
-      const layerId = `roam3d-rooftop-caps-z${zoom}`;
-      if (map.getLayer(layerId)) continue;
+      const obsoleteLayerId = `roam3d-rooftop-caps-z${zoom}`;
+      if (map.getLayer(obsoleteLayerId)) map.removeLayer(obsoleteLayerId);
+    }
+    if (!map.getLayer('roam3d-rooftop-caps')) {
       map.addLayer({
-        id: layerId,
+        id: 'roam3d-rooftop-caps',
         type: 'fill-extrusion',
         source: 'openmaptiles',
         'source-layer': 'building',
-        minzoom: zoom,
-        maxzoom: zoom + 1,
+        minzoom: 13.5,
         paint: {
-          // The active zoom band selects one pre-sized pattern. Using separate
-          // layers avoids mixing camera and feature expressions, which some
-          // MapLibre versions reject for resolved image properties.
-          'fill-extrusion-pattern': rooftopPatternAtZoom(zoom),
+          'fill-extrusion-pattern': rooftopPatternExpression,
           'fill-extrusion-height': [
             'interpolate', ['linear'], ['zoom'],
             13.5, 0,
