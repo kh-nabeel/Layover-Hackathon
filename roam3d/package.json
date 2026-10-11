@@ -10,7 +10,6 @@
     "fetch-routes": "node scripts/fetch-routes.mjs"
   },
   "devDependencies": {
-    "@rolldown/binding-win32-x64-msvc": "^1.2.13",
     "vite": "^8.3.0"
   },
   "dependencies": {
